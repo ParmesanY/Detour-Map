@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/probe/">
+    <Project Path="probe/Detour.NetProbe.Cli/Detour.NetProbe.Cli.csproj" />
+    <Project Path="probe/Detour.NetProbe.Tests/Detour.NetProbe.Tests.csproj" />
+    <Project Path="probe/Detour.NetProbe/Detour.NetProbe.csproj" />
+  </Folder>
+</Solution>

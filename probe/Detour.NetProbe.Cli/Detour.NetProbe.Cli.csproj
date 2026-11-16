@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>detour-probe</AssemblyName>
+    <RootNamespace>Detour.NetProbe.Cli</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Detour.NetProbe\Detour.NetProbe.csproj" />
+  </ItemGroup>
+
+  <!-- AOT doesn't ship msquic.dll on Windows, and without it QUIC reports "unsupported". Take it from the runtime pack. -->
+  <Target Name="CopyMsQuic" AfterTargets="Publish" Condition="$(RuntimeIdentifier.StartsWith('win'))">
+    <ItemGroup>
+      <_MsQuic Include="@(ResolvedRuntimePack->'%(PackageDirectory)\runtimes\$(RuntimeIdentifier)\native\msquic.dll')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_MsQuic)" DestinationFolder="$(PublishDir)" Condition="Exists('%(_MsQuic.FullPath)')" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

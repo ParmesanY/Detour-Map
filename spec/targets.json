@@ -1,0 +1,49 @@
+{
+  // What the probe measures. Bump "version" on every change: reports carry it.
+  // kind: control = domestic, never blocked; hosting = foreign test files (16 KB freeze, whitelists);
+  //       site = a service; ip = bare address, TCP only.
+  "version": 1,
+  "targets": [
+    { "id": "yandex", "name": "Yandex", "kind": "control", "host": "ya.ru" },
+    { "id": "vk", "name": "VK", "kind": "control", "host": "vk.com" },
+
+    { "id": "cloudflare", "name": "Cloudflare", "kind": "hosting", "host": "speed.cloudflare.com", "path": "/__down?bytes=65536", "quic": true },
+    { "id": "hetzner", "name": "Hetzner", "kind": "hosting", "host": "nbg1-speed.hetzner.com", "path": "/100MB.bin" },
+    { "id": "ovh", "name": "OVH", "kind": "hosting", "host": "proof.ovh.net", "path": "/files/1Mb.dat" },
+    { "id": "vultr", "name": "Vultr", "kind": "hosting", "host": "fra-de-ping.vultr.com", "path": "/vultr.com.100MB.bin" },
+    { "id": "linode", "name": "Linode / Akamai", "kind": "hosting", "host": "speedtest.frankfurt.linode.com", "path": "/100MB-frankfurt.bin" },
+
+    { "id": "google", "name": "Google", "host": "www.google.com", "quic": true },
+    { "id": "youtube", "name": "YouTube", "host": "www.youtube.com", "quic": true },
+    { "id": "googlevideo", "name": "YouTube video", "host": "redirector.googlevideo.com", "path": "/generate_204", "quic": true },
+    { "id": "discord", "name": "Discord", "host": "discord.com" },
+    { "id": "discord-gateway", "name": "Discord gateway", "host": "gateway.discord.gg" },
+    { "id": "discord-media", "name": "Discord media", "host": "media.discordapp.net" },
+    { "id": "telegram", "name": "Telegram", "host": "telegram.org" },
+    { "id": "telegram-web", "name": "Telegram Web", "host": "web.telegram.org" },
+    { "id": "whatsapp", "name": "WhatsApp Web", "host": "web.whatsapp.com" },
+    { "id": "signal", "name": "Signal", "host": "signal.org" },
+    { "id": "instagram", "name": "Instagram", "host": "www.instagram.com", "quic": true },
+    { "id": "facebook", "name": "Facebook", "host": "www.facebook.com" },
+    { "id": "x", "name": "X (Twitter)", "host": "x.com" },
+    { "id": "linkedin", "name": "LinkedIn", "host": "www.linkedin.com" },
+    { "id": "tiktok", "name": "TikTok", "host": "www.tiktok.com" },
+    { "id": "twitch", "name": "Twitch", "host": "www.twitch.tv" },
+    { "id": "soundcloud", "name": "SoundCloud", "host": "soundcloud.com" },
+    { "id": "patreon", "name": "Patreon", "host": "www.patreon.com" },
+    { "id": "medium", "name": "Medium", "host": "medium.com" },
+    { "id": "github", "name": "GitHub", "host": "github.com" },
+    { "id": "chatgpt", "name": "ChatGPT", "host": "chatgpt.com" },
+    { "id": "proton", "name": "Proton", "host": "proton.me" },
+    { "id": "torproject", "name": "Tor Project", "host": "www.torproject.org" },
+    { "id": "rutracker", "name": "Rutracker", "host": "rutracker.org", "path": "/forum/index.php" },
+    { "id": "nnmclub", "name": "NNM-Club", "host": "nnmclub.to" },
+    { "id": "meduza", "name": "Meduza", "host": "meduza.io" },
+    { "id": "bbc", "name": "BBC", "host": "www.bbc.com" },
+    { "id": "dw", "name": "DW", "host": "www.dw.com" },
+
+    { "id": "telegram-dc2", "name": "Telegram DC2", "kind": "ip", "ip": "149.154.167.51", "tls": false },
+    { "id": "telegram-dc4", "name": "Telegram DC4", "kind": "ip", "ip": "149.154.167.91", "tls": false },
+    { "id": "cloudflare-dns", "name": "Cloudflare 1.1.1.1", "kind": "ip", "ip": "1.1.1.1", "tls": false }
+  ]
+}

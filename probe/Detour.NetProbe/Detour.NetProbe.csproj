@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Detour.NetProbe</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+    <Description>Measures how an ISP blocks sites: DNS, TCP, TLS/SNI, the 16 KB freeze, QUIC. Shared by the Detour client and the detour-probe CLI.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Detour.NetProbe.Tests" />
+    <EmbeddedResource Include="..\..\spec\targets.json" LogicalName="Detour.NetProbe.targets.json" />
+  </ItemGroup>
+
+</Project>

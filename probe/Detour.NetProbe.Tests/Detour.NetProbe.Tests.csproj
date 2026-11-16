@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.81.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Detour.NetProbe\Detour.NetProbe.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\spec\verdict-cases.json" Link="verdict-cases.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

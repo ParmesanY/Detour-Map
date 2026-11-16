@@ -1,0 +1,87 @@
+[
+  {
+    "name": "all fine",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "ok", "http": { "bytes": 65536, "status": 200, "ms": 400, "complete": true } },
+    "expect": ["ok"]
+  },
+  {
+    "name": "dns stub, path open",
+    "result": { "t": "a", "dns": "stub", "dns_ip": "10.0.0.1", "tcp": "ok", "tls": "ok", "http": { "bytes": 20000, "status": 200, "ms": 300, "complete": true } },
+    "expect": ["dns"]
+  },
+  {
+    "name": "dns differs from DoH only: CDN, not a block",
+    "result": { "t": "a", "dns": "diff", "dns_ip": "5.6.7.8", "tcp": "ok", "tls": "ok", "http": { "bytes": 20000, "status": 200, "ms": 300, "complete": true } },
+    "expect": ["ok"]
+  },
+  {
+    "name": "nxdomain and SNI reset",
+    "result": { "t": "a", "dns": "nx", "tcp": "ok", "tls": "rst", "tls_ctrl": "ok" },
+    "expect": ["dns", "sni"]
+  },
+  {
+    "name": "SNI filter: own name silent, neutral name gets an alert",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "timeout", "tls_ctrl": "alert" },
+    "expect": ["sni"]
+  },
+  {
+    "name": "IP block after TCP: any name fails",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "timeout", "tls_ctrl": "timeout" },
+    "expect": ["ip"]
+  },
+  {
+    "name": "TCP to the address times out",
+    "result": { "t": "a", "dns": "ok", "tcp": "timeout" },
+    "expect": ["ip"]
+  },
+  {
+    "name": "IP-only target, TCP works",
+    "result": { "t": "a", "tcp": "ok" },
+    "expect": ["ok"]
+  },
+  {
+    "name": "16 KB freeze",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "ok", "http": { "bytes": 14200, "status": 200, "ms": 8000, "complete": false, "error": "timeout" } },
+    "expect": ["freeze16k"]
+  },
+  {
+    "name": "handshake passes, nothing comes back",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "ok", "http": { "bytes": 0, "ms": 8000, "complete": false, "error": "timeout" } },
+    "expect": ["stall"]
+  },
+  {
+    "name": "cut late, past the freeze: fine",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "ok", "http": { "bytes": 50000, "status": 200, "ms": 8000, "complete": false, "error": "timeout" } },
+    "expect": ["ok"]
+  },
+  {
+    "name": "throttled: 64 KB in 4 s",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "ok", "http": { "bytes": 65536, "status": 200, "ms": 4000, "complete": true } },
+    "expect": ["throttle"]
+  },
+  {
+    "name": "small page served slowly is not throttling",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "ok", "http": { "bytes": 9000, "status": 200, "ms": 3000, "complete": true } },
+    "expect": ["ok"]
+  },
+  {
+    "name": "server refuses with a TLS alert",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "alert" },
+    "expect": ["server"]
+  },
+  {
+    "name": "QUIC dropped, TCP fine",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "ok", "http": { "bytes": 65536, "status": 200, "ms": 300, "complete": true }, "quic": "timeout" },
+    "expect": ["quic"]
+  },
+  {
+    "name": "QUIC not counted on top of an SNI block",
+    "result": { "t": "a", "dns": "ok", "tcp": "ok", "tls": "rst", "tls_ctrl": "ok", "quic": "timeout" },
+    "expect": ["sni"]
+  },
+  {
+    "name": "no address at all",
+    "result": { "t": "a", "dns": "timeout" },
+    "expect": ["unknown"]
+  }
+]
