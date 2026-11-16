@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "db:migrate:local": "wrangler d1 migrations apply detour-map --local",
+    "seed:local": "node scripts/seed-demo.mjs && wrangler d1 execute detour-map --local --file .wrangler/demo-seed.sql",
     "deploy": "wrangler deploy",
     "types": "wrangler types",
     "typecheck": "tsc --noEmit",

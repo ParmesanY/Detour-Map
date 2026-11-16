@@ -5,6 +5,11 @@
   "compatibility_date": "2026-08-01",
   // Request logs would hold client IPs: keep Workers Logs off.
   "observability": { "enabled": false },
+  // The map site (site/public) is served from the same origin; /v1/* always reaches the Worker.
+  "assets": {
+    "directory": "../site/public",
+    "run_worker_first": ["/v1/*"]
+  },
   "d1_databases": [
     {
       "binding": "DB",

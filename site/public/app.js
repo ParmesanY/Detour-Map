@@ -1,0 +1,370 @@
+// Detour Map front end: no dependencies, everything from the same origin (/v1 API, regions.json).
+
+const METHODS = {
+  dns: "DNS-подмена",
+  ip: "Блок по IP",
+  sni: "DPI по имени (SNI)",
+  freeze: "Заморозка 16 КБ",
+  stall: "Тишина после TLS",
+  throttle: "Замедление",
+};
+const GROUPS = { site: "Сервисы", hosting: "Хостинги (VPN-серверы)", ip: "Адреса", special: "Режим сети" };
+const WHITELIST = "_whitelist";
+/** Upper bounds of the blocked-share classes c0..c3; c4 is the rest. */
+const BINS = [0.1, 0.3, 0.6, 0.9];
+const BIN_LABELS = ["<10%", "10–30", "30–60", "60–90", "90%+"];
+
+const $ = (id) => document.getElementById(id);
+const pct = (x) => `${Math.round(x * 100)}%`;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const binOf = (share) => {
+  const i = BINS.findIndex((b) => share < b);
+  return i === -1 ? 4 : i;
+};
+const methodName = (m) => (m ? METHODS[m] ?? m : "—");
+
+const state = { target: "youtube", days: "1", net: "", region: null };
+let targets = [];
+let regionShapes = new Map();
+let regionData = new Map();
+
+// ---- URL state ------------------------------------------------------------------------------------
+
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  state.target = p.get("t") ?? state.target;
+  state.days = ["1", "7", "30"].includes(p.get("days")) ? p.get("days") : "1";
+  state.net = ["home", "mobile"].includes(p.get("net")) ? p.get("net") : "";
+  state.region = /^[A-Z0-9]{1,3}$/.test(p.get("region") ?? "") ? p.get("region") : null;
+}
+
+function writeUrl() {
+  const p = new URLSearchParams();
+  p.set("t", state.target);
+  if (state.days !== "1") p.set("days", state.days);
+  if (state.net) p.set("net", state.net);
+  if (state.region) p.set("region", state.region);
+  history.replaceState(null, "", `?${p}`);
+}
+
+// ---- API ------------------------------------------------------------------------------------------
+
+async function api(path, params = {}) {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== null && v !== ""));
+  const res = await fetch(`/v1/${path}?${q}`);
+  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  return res.json();
+}
+
+const common = () => ({ days: state.days, net: state.net });
+
+// ---- Tooltip --------------------------------------------------------------------------------------
+
+const tip = $("tip");
+
+function showTip(html, event) {
+  tip.innerHTML = html;
+  tip.hidden = false;
+  const pad = 14;
+  const { innerWidth: w, innerHeight: h } = window;
+  const r = tip.getBoundingClientRect();
+  let x = event.clientX + pad;
+  let y = event.clientY + pad;
+  if (x + r.width > w - 8) x = event.clientX - r.width - pad;
+  if (y + r.height > h - 8) y = event.clientY - r.height - pad;
+  tip.style.left = `${Math.max(8, x)}px`;
+  tip.style.top = `${Math.max(8, y)}px`;
+}
+
+const hideTip = () => (tip.hidden = true);
+
+function statRows(s) {
+  const rows = [
+    ["Блокировка", pct(s.blocked)],
+    ["Основной способ", methodName(s.main)],
+    ["Участники", s.reporters],
+    ["Замеры", s.probes],
+  ];
+  for (const [k, name] of Object.entries(METHODS)) {
+    if (s.methods?.[k] > 0 && k !== s.main) rows.push([name, pct(s.methods[k])]);
+  }
+  return rows.map(([a, b]) => `<div class="row"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join("");
+}
+
+// ---- Controls -------------------------------------------------------------------------------------
+
+function initControls() {
+  for (const seg of document.querySelectorAll(".seg")) {
+    const name = seg.dataset.name;
+    for (const b of seg.querySelectorAll("button")) {
+      b.addEventListener("click", () => {
+        state[name] = b.dataset.value;
+        syncControls();
+        writeUrl();
+        refresh();
+      });
+    }
+  }
+  $("region-clear").addEventListener("click", () => selectRegion(null));
+}
+
+function syncControls() {
+  for (const seg of document.querySelectorAll(".seg")) {
+    for (const b of seg.querySelectorAll("button")) {
+      b.setAttribute("aria-checked", String(b.dataset.value === state[seg.dataset.name]));
+    }
+  }
+}
+
+// ---- Target list ----------------------------------------------------------------------------------
+
+function renderTargets(summary) {
+  const byId = new Map(summary.targets.map((t) => [t.target, t]));
+  const list = $("target-list");
+  list.innerHTML = "";
+  const items = [
+    ...targets.filter((t) => t.kind !== "control"),
+    { id: WHITELIST, name: "Белые списки", kind: "special" },
+  ];
+  for (const kind of Object.keys(GROUPS)) {
+    const group = items
+      .filter((t) => t.kind === kind)
+      .sort((a, b) => (byId.get(b.id)?.blocked ?? -1) - (byId.get(a.id)?.blocked ?? -1) || a.name.localeCompare(b.name));
+    if (group.length === 0) continue;
+    const h = document.createElement("li");
+    h.className = "group";
+    h.setAttribute("role", "presentation");
+    h.textContent = GROUPS[kind];
+    list.append(h);
+    for (const t of group) {
+      const s = byId.get(t.id);
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.tabIndex = 0;
+      li.dataset.id = t.id;
+      li.setAttribute("aria-selected", String(t.id === state.target));
+      li.innerHTML = s
+        ? `<span class="name">${esc(t.name)}</span><span class="meter"><i data-w="${Math.round(s.blocked * 100)}"></i></span><span class="val">${pct(s.blocked)}</span>`
+        : `<span class="name">${esc(t.name)}</span><span></span><span class="val nodata-dash">—</span>`;
+      li.title = s ? `${t.name}: блокировка в ${pct(s.blocked)} замеров, ${s.reporters} участн.` : `${t.name}: мало данных`;
+      const pick = () => {
+        state.target = t.id;
+        writeUrl();
+        for (const x of list.querySelectorAll("[role=option]")) x.setAttribute("aria-selected", String(x.dataset.id === t.id));
+        refreshTarget();
+      };
+      li.addEventListener("click", pick);
+      li.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          pick();
+        }
+      });
+      list.append(li);
+    }
+  }
+}
+
+// Meter widths go through data-w: the CSP blocks style="" in markup, but not styles set from script.
+function applyMeters() {
+  for (const i of document.querySelectorAll(".meter > i[data-w]")) {
+    i.style.width = `${i.dataset.w}%`;
+    delete i.dataset.w;
+  }
+}
+
+// ---- Map ------------------------------------------------------------------------------------------
+
+async function initMap() {
+  const geo = await (await fetch("regions.json")).json();
+  const svg = $("map");
+  svg.setAttribute("viewBox", `0 0 ${geo.width} ${geo.height}`);
+  const ns = "http://www.w3.org/2000/svg";
+  for (const r of geo.regions) {
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", r.d);
+    p.dataset.code = r.code;
+    p.classList.add("nodata");
+    svg.append(p);
+    regionShapes.set(r.code, { ...r, el: p });
+  }
+  svg.addEventListener("pointermove", (e) => {
+    const code = e.target.dataset?.code;
+    if (!code) return hideTip();
+    const shape = regionShapes.get(code);
+    const s = regionData.get(code);
+    showTip(`<b>${esc(shape.name)}</b>${s ? statRows(s) : '<div class="row"><span>Мало данных</span><span></span></div>'}`, e);
+  });
+  svg.addEventListener("pointerleave", hideTip);
+  svg.addEventListener("click", (e) => {
+    const code = e.target.dataset?.code;
+    if (code && regionData.has(code)) selectRegion(state.region === code ? null : code);
+  });
+
+  const legend = $("legend");
+  legend.innerHTML =
+    BIN_LABELS.map((l, i) => `<span class="sw${i === 4 ? " last" : ""}"><i class="lg c${i}"></i>${l}</span>`).join("") +
+    `<span class="sw nd"><i></i>нет данных</span>`;
+  // Legend swatches take the map's class colours.
+  legend.querySelectorAll("i.lg").forEach((i, n) => (i.style.background = `var(--c${n})`));
+}
+
+function regionName(code) {
+  return regionShapes.get(code)?.name ?? code;
+}
+
+function renderMap(map) {
+  regionData = new Map(map.regions.map((r) => [r.region, r]));
+  for (const [code, shape] of regionShapes) {
+    const s = regionData.get(code);
+    shape.el.setAttribute("class", s ? `has-data c${binOf(s.blocked)}` : "nodata");
+    shape.el.classList.toggle("active", code === state.region);
+  }
+  $("map").classList.toggle("dim", Boolean(state.region));
+  $("map-empty").hidden = map.regions.length > 0;
+
+  const rows = [...map.regions].sort((a, b) => b.blocked - a.blocked || b.reporters - a.reporters);
+  $("region-rows").innerHTML = rows.length
+    ? rows
+        .map((r) => `<tr><td>${esc(regionName(r.region || "—"))}</td><td class="num">${r.reporters}</td><td class="num">${pct(r.blocked)}</td><td class="method">${esc(methodName(r.main))}</td></tr>`)
+        .join("")
+    : `<tr class="empty"><td colspan="4">Нет регионов с тремя и более участниками</td></tr>`;
+}
+
+function selectRegion(code) {
+  state.region = code;
+  writeUrl();
+  for (const [c, shape] of regionShapes) shape.el.classList.toggle("active", c === code);
+  $("map").classList.toggle("dim", Boolean(code));
+  $("region-bar").hidden = !code;
+  if (code) $("region-name").textContent = regionName(code);
+  refreshDetails();
+}
+
+// ---- ISPs -----------------------------------------------------------------------------------------
+
+function renderIsps(data) {
+  const where = state.region ? regionName(state.region) : "вся страна";
+  $("isps-sub").textContent = where;
+  $("isp-rows").innerHTML = data.isps.length
+    ? data.isps
+        .map(
+          (i) => `<tr>
+            <td>${esc(i.as_org || "—")}<span class="asn">AS${i.asn}</span></td>
+            <td class="num">${i.reporters}</td>
+            <td><span class="bar"><span class="meter"><i data-w="${Math.round(i.blocked * 100)}"></i></span>${pct(i.blocked)}</span></td>
+            <td class="method">${esc(methodName(i.main))}</td>
+          </tr>`,
+        )
+        .join("")
+    : `<tr class="empty"><td colspan="4">Нет провайдеров с тремя и более участниками</td></tr>`;
+  applyMeters();
+}
+
+// ---- History --------------------------------------------------------------------------------------
+
+function renderHistory(data) {
+  $("history-sub").textContent = state.region ? regionName(state.region) : "вся страна";
+  const svg = $("history");
+  const W = 520;
+  const H = 180;
+  const m = { l: 34, r: 6, t: 8, b: 22 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const today = new Date();
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const byDay = new Map(data.days.map((d) => [d.day, d]));
+  const iw = W - m.l - m.r;
+  const ih = H - m.t - m.b;
+  const step = iw / days.length;
+  const bw = Math.max(2, step - 2);
+  const y = (v) => m.t + ih * (1 - v);
+  let out = "";
+  for (const v of [0, 0.5, 1]) {
+    out += `<line class="${v === 0 ? "baseline" : "gridline"}" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/>`;
+    out += `<text class="tick" x="${m.l - 6}" y="${y(v) + 3}" text-anchor="end">${v * 100}%</text>`;
+  }
+  days.forEach((day, i) => {
+    const x = m.l + i * step + 1;
+    const d = byDay.get(day);
+    if (d) {
+      const h = Math.max(d.blocked > 0 ? 2 : 0, ih * d.blocked);
+      // Rounded data-end, square on the baseline.
+      const r = Math.min(4, h / 2, bw / 2);
+      const top = y(0) - h;
+      out += `<rect class="hit" data-day="${day}" x="${x - 1}" y="${m.t}" width="${step}" height="${ih}"/>`;
+      out +=
+        h > 0
+          ? `<path class="bar" d="M${x},${y(0)} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${y(0)} Z"/>`
+          : `<path class="bar"/>`;
+    }
+    // A date every 7 days, counted from today so the last bar is always labelled.
+    if ((days.length - 1 - i) % 7 === 0) {
+      out += `<text class="tick" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${day.slice(8, 10)}.${day.slice(5, 7)}</text>`;
+    }
+  });
+  if (data.days.length === 0) {
+    out += `<text class="empty" x="${m.l + iw / 2}" y="${m.t + ih / 2}" text-anchor="middle">Пока нет дней с тремя и более участниками</text>`;
+  }
+  svg.innerHTML = out;
+  for (const hit of svg.querySelectorAll(".hit")) {
+    const d = byDay.get(hit.dataset.day);
+    hit.addEventListener("pointermove", (e) => showTip(`<b>${hit.dataset.day}</b>${statRows(d)}`, e));
+    hit.addEventListener("pointerleave", hideTip);
+  }
+}
+
+// ---- Refresh --------------------------------------------------------------------------------------
+
+function targetName(id) {
+  return id === WHITELIST ? "Белые списки (доля отчётов)" : targets.find((t) => t.id === id)?.name ?? id;
+}
+
+async function refreshDetails() {
+  const region = state.region;
+  const [isps, history] = await Promise.all([
+    api("isps", { target: state.target, region, ...common() }),
+    api("history", { target: state.target, region, net: state.net, days: 30 }),
+  ]);
+  renderIsps(isps);
+  renderHistory(history);
+}
+
+async function refreshTarget() {
+  $("target-name").textContent = targetName(state.target);
+  const period = { 1: "за сутки", 7: "за 7 дней", 30: "за 30 дней" }[state.days];
+  const net = { "": "", home: ", домашний интернет", mobile: ", мобильный интернет" }[state.net];
+  $("map-sub").textContent = `доля замеров с блокировкой ${period}${net}`;
+  const map = await api("map", { target: state.target, ...common() });
+  renderMap(map);
+  if (state.region && !regionData.has(state.region)) state.region = null;
+  $("region-bar").hidden = !state.region;
+  if (state.region) $("region-name").textContent = regionName(state.region);
+  await refreshDetails();
+}
+
+async function refresh() {
+  const summary = await api("summary", common());
+  renderTargets(summary);
+  applyMeters();
+  await refreshTarget();
+}
+
+async function main() {
+  readUrl();
+  initControls();
+  syncControls();
+  const [list] = await Promise.all([api("targets"), initMap()]);
+  targets = list.targets;
+  if (state.target !== WHITELIST && !targets.some((t) => t.id === state.target)) state.target = "youtube";
+  writeUrl();
+  await refresh();
+}
+
+main().catch((e) => {
+  $("map-empty").hidden = false;
+  $("map-empty").textContent = `Не удалось загрузить данные: ${e.message}`;
+});

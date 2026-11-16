@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detour Map — карта блокировок</title>
+  <meta name="description" content="Что блокируют в России, у какого провайдера, в каком регионе и каким способом. Замеры присылают сами пользователи.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 L10 12 L14 15 L20 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="6" r="2" fill="currentColor"/></svg>
+      <span>Detour Map</span>
+    </a>
+    <span class="tag">карта блокировок · beta</span>
+    <a class="cta" href="https://github.com/ParmesanY/Detour" rel="noopener">Обойти блокировки с Detour →</a>
+  </header>
+
+  <main class="layout">
+    <aside class="side">
+      <section class="panel controls" aria-label="Фильтры">
+        <div class="field">
+          <span class="label">Период</span>
+          <div class="seg" role="radiogroup" aria-label="Период" data-name="days">
+            <button role="radio" data-value="1">сутки</button>
+            <button role="radio" data-value="7">7 дней</button>
+            <button role="radio" data-value="30">30 дней</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Подключение</span>
+          <div class="seg" role="radiogroup" aria-label="Подключение" data-name="net">
+            <button role="radio" data-value="">любое</button>
+            <button role="radio" data-value="home">домашнее</button>
+            <button role="radio" data-value="mobile">мобильное</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel targets" aria-labelledby="targets-title">
+        <h2 id="targets-title" class="panel-title">Сервисы <span class="hint">доля замеров с блокировкой</span></h2>
+        <ul id="target-list" class="target-list" role="listbox" aria-label="Сервис"></ul>
+      </section>
+    </aside>
+
+    <section class="content">
+      <section class="panel map-panel" aria-labelledby="map-title">
+        <div class="panel-head">
+          <h1 id="map-title" class="panel-title"><span id="target-name">…</span> <span class="hint" id="map-sub"></span></h1>
+          <div class="legend" id="legend" aria-label="Шкала"></div>
+        </div>
+        <div class="map-wrap">
+          <svg id="map" role="img" aria-labelledby="map-title"></svg>
+          <div id="map-empty" class="map-empty" hidden>
+            Пока данных мало. Регион появляется на карте, когда его подтвердили минимум три разных человека — так
+            один замер не выдаёт ни отравленные данные, ни самого участника.
+          </div>
+        </div>
+        <div id="region-bar" class="region-bar" hidden>
+          <span>Регион: <b id="region-name"></b></span>
+          <button id="region-clear" class="link">вся страна ×</button>
+        </div>
+        <details class="table-view">
+          <summary>Таблица по регионам</summary>
+          <table class="data">
+            <thead><tr><th>Регион</th><th class="num">Участники</th><th class="num">Блокировка</th><th>Основной способ</th></tr></thead>
+            <tbody id="region-rows"></tbody>
+          </table>
+        </details>
+      </section>
+
+      <div class="grid2">
+        <section class="panel" aria-labelledby="isps-title">
+          <h2 id="isps-title" class="panel-title">Провайдеры <span class="hint" id="isps-sub"></span></h2>
+          <table class="data">
+            <thead><tr><th>Провайдер</th><th class="num">Участники</th><th>Блокировка</th><th>Способ</th></tr></thead>
+            <tbody id="isp-rows"></tbody>
+          </table>
+        </section>
+
+        <section class="panel" aria-labelledby="history-title">
+          <h2 id="history-title" class="panel-title">История, 30 дней <span class="hint" id="history-sub"></span></h2>
+          <svg id="history" class="history" role="img" aria-labelledby="history-title"></svg>
+        </section>
+      </div>
+
+      <section class="panel methods" aria-labelledby="methods-title">
+        <h2 id="methods-title" class="panel-title">Как блокируют</h2>
+        <dl class="method-list">
+          <div><dt>DNS-подмена</dt><dd>DNS провайдера отвечает заглушкой или «такого домена нет». Лечится своим DNS (DoH).</dd></div>
+          <div><dt>Блок по IP</dt><dd>Адрес сервера недоступен целиком, с любым именем сайта. Нужен VPN.</dd></div>
+          <div><dt>DPI по имени (SNI)</dt><dd>Оборудование ТСПУ видит имя сайта в начале TLS и рвёт соединение. Помогают zapret и VPN.</dd></div>
+          <div><dt>Заморозка 16 КБ</dt><dd>Соединение с зарубежным хостингом замирает после ~16 КБ. Ломает VPN-серверы на Hetzner, OVH и т. п.</dd></div>
+          <div><dt>Тишина после рукопожатия</dt><dd>TLS проходит, но ответ так и не приходит.</dd></div>
+          <div><dt>Замедление</dt><dd>Данные идут, но в разы медленнее нормы.</dd></div>
+        </dl>
+      </section>
+
+      <footer class="foot">
+        <p>
+          Замеры присылают участники: по желанию из клиента <a href="https://github.com/ParmesanY/Detour" rel="noopener">Detour</a>
+          или консольным зондом <span class="mono">detour-probe</span>. Сервер не хранит IP-адреса: по адресу определяются только
+          провайдер и регион, а для защиты от спама — суточный псевдоним, ключ которого удаляется в конце дня.
+        </p>
+        <p class="muted">Границы регионов: Natural Earth (public domain). Данные — доли замеров, а не официальные реестры.</p>
+      </footer>
+    </section>
+  </main>
+
+  <div id="tip" class="tip" role="tooltip" hidden></div>
+
+  <svg class="defs-holder" width="0" height="0" aria-hidden="true">
+    <defs>
+      <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+        <rect width="6" height="6" class="hatch-bg"/>
+        <line x1="0" y1="0" x2="0" y2="6" class="hatch-line"/>
+      </pattern>
+    </defs>
+  </svg>
+</body>
+</html>

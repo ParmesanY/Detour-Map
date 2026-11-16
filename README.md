@@ -5,7 +5,8 @@ A crowdsourced map of internet blocks in Russia: what is blocked, by which ISP, 
 Part of the [Detour](https://github.com/) family. Plan: [docs/PLAN.md](docs/PLAN.md) (in Russian).
 
 Status: the probe (M1) and the collector (M2) work. A test collector runs at
-`https://detour-map-collector.detour-map-collector.workers.dev` (may move to its own server later). The map site is next.
+`https://detour-map-collector.detour-map-collector.workers.dev` (may move to its own server later). The map site (M3)
+works locally; Detour integration is next.
 
 ## detour-probe
 
@@ -48,10 +49,21 @@ Deploy (once per Cloudflare account): `npx wrangler login --device`, `npx wrangl
 API: `POST /v1/report`, `GET /v1/targets`, `/v1/summary`, `/v1/map?target=`, `/v1/isps?target=`,
 `/v1/history?target=` (details in [docs/PLAN.md](docs/PLAN.md)).
 
+## site
+
+The map: plain HTML/CSS/JS in `site/public`, served by the same Worker (static assets), so it talks only to its own
+origin and loads nothing from third parties (strict CSP in `_headers`). Regions are pre-projected SVG paths in
+`regions.json`, built from Natural Earth (public domain) with `site/tools/build-regions.mjs`; codes are ISO 3166-2,
+the same as Cloudflare's `regionCode`.
+
+To work on it locally with invented numbers: `cd collector`, `npm run seed:local` (local database only), `npm run dev`,
+open http://localhost:8787.
+
 ## Layout
 
 - `probe/Detour.NetProbe`: the measurement library (also used by the Detour client)
 - `probe/Detour.NetProbe.Cli`: `detour-probe`
 - `probe/Detour.NetProbe.Tests`: tests (`dotnet test --project probe/Detour.NetProbe.Tests`)
 - `collector`: the Worker (TypeScript), D1 migrations, tests (vitest in workerd)
+- `site`: the map site (`public/`) and the region geometry builder (`tools/`)
 - `spec/targets.json`: what is probed; `spec/verdict-cases.json`: verdict examples shared by the C# and TS tests
