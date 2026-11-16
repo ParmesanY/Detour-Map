@@ -4,9 +4,9 @@ A crowdsourced map of internet blocks in Russia: what is blocked, by which ISP, 
 (DNS stubs, IP blocks, SNI filtering, the "16 KB freeze" on foreign hosting, QUIC drops, throttling).
 Part of the [Detour](https://github.com/) family. Plan: [docs/PLAN.md](docs/PLAN.md) (in Russian).
 
-Status: the probe (M1) and the collector (M2) work. A test collector runs at
-`https://detour-map-collector.detour-map-collector.workers.dev` (may move to its own server later). The map site (M3)
-works locally; Detour integration is next.
+Status: the probe (M1), the collector (M2) and the map site (M3) work. A test instance runs at
+https://detour-map-collector.detour-map-collector.workers.dev (may move to its own server later). Detour integration
+is next.
 
 ## detour-probe
 

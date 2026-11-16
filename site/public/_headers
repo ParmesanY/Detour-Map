@@ -6,4 +6,5 @@
   Cache-Control: no-cache
 
 /regions.json
+  ! Cache-Control
   Cache-Control: public, max-age=86400
