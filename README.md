@@ -4,7 +4,8 @@ A crowdsourced map of internet blocks in Russia: what is blocked, by which ISP, 
 (DNS stubs, IP blocks, SNI filtering, the "16 KB freeze" on foreign hosting, QUIC drops, throttling).
 Part of the [Detour](https://github.com/) family. Plan: [docs/PLAN.md](docs/PLAN.md) (in Russian).
 
-Status: the probe (M1) and the collector (M2) work locally; nothing is deployed yet. The map site is next.
+Status: the probe (M1) and the collector (M2) work. A test collector runs at
+`https://detour-map-collector.detour-map-collector.workers.dev` (may move to its own server later). The map site is next.
 
 ## detour-probe
 
@@ -40,6 +41,9 @@ npm run db:migrate:local
 npm run dev        # http://localhost:8787
 npm test           # runs in workerd against a local D1
 ```
+
+Deploy (once per Cloudflare account): `npx wrangler login --device`, `npx wrangler d1 create detour-map`
+(put its id into `wrangler.jsonc`), `npx wrangler d1 migrations apply detour-map --remote`, `npx wrangler deploy`.
 
 API: `POST /v1/report`, `GET /v1/targets`, `/v1/summary`, `/v1/map?target=`, `/v1/isps?target=`,
 `/v1/history?target=` (details in [docs/PLAN.md](docs/PLAN.md)).

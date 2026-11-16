@@ -9,8 +9,7 @@
     {
       "binding": "DB",
       "database_name": "detour-map",
-      // Filled in on the first deploy (wrangler d1 create detour-map); local dev doesn't need it.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "38ac1ea5-2121-47e0-a280-ed312b1d600a",
       "migrations_dir": "migrations"
     }
   ],
