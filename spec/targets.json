@@ -1,7 +1,4 @@
 {
-  // What the probe measures. Bump "version" on every change: reports carry it.
-  // kind: control = domestic, never blocked; hosting = foreign test files (16 KB freeze, whitelists);
-  //       site = a service; ip = bare address, TCP only.
   "version": 1,
   "targets": [
     { "id": "yandex", "name": "Yandex", "kind": "control", "host": "ya.ru" },

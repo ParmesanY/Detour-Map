@@ -3,7 +3,7 @@ using System.Text.Json;
 using Detour.NetProbe;
 
 // detour-probe: measures what the ISP blocks and how, prints a table and saves the JSON report.
-// Sends nothing anywhere (sending to the map comes with the collector).
+// Sends it to a collector only when asked with --send.
 
 var net = "home";
 string? targetsFile = null;
@@ -11,6 +11,7 @@ string? outFile = null;
 var jsonOnly = false;
 var force = false;
 HashSet<string>? only = null;
+Uri? send = null;
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -23,10 +24,17 @@ for (var i = 0; i < args.Length; i++)
         case "--only": only = [.. Next().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)]; break;
         case "--json": jsonOnly = true; break;
         case "--force": force = true; break;
+        case "--send":
+            if (!Uri.TryCreate(Next(), UriKind.Absolute, out send) || send.Scheme is not ("https" or "http"))
+            {
+                Console.Error.WriteLine("--send needs the collector's address, e.g. https://map.example.org");
+                return 2;
+            }
+            break;
         case "--help" or "-h" or "/?":
             Console.WriteLine("""
                 detour-probe — what your ISP blocks and how (DNS, IP, SNI, 16 KB freeze, QUIC, throttling).
-                Changes nothing on the computer, sends nothing anywhere.
+                Changes nothing on the computer. Sends nothing anywhere unless --send is given.
 
                   --net home|mobile   connection type (default home)
                   --only id,id        only these targets
@@ -34,6 +42,8 @@ for (var i = 0; i < args.Length; i++)
                   --out FILE          where to save the JSON report (default detour-probe-report.json)
                   --json              print only the JSON report to stdout
                   --force             run even while a DPI bypass (zapret, GoodbyeDPI…) is running
+                  --send URL          send the report to the Detour Map collector at URL
+                                      (the collector sees your IP only to tell the ISP and region; it stores neither the IP nor the city)
                 """);
             return 0;
         default:
@@ -118,6 +128,23 @@ var path = outFile ?? "detour-probe-report.json";
 File.WriteAllText(path, json);
 log.WriteLine();
 log.WriteLine($"Report saved to {Path.GetFullPath(path)} (no IP address in it).");
+
+if (send is not null)
+{
+    try
+    {
+        var sent = await ReportSender.SendAsync(report, send, nic, cancel.Token);
+        log.WriteLine(sent.Accepted
+            ? $"Sent to {send.Host}: accepted{(sent.Flags is { Count: > 0 } f ? " (" + string.Join(", ", f) + ")" : "")}."
+            : $"Sent to {send.Host}: refused, HTTP {sent.HttpStatus}: {sent.Error}");
+        return sent.Accepted ? 0 : 4;
+    }
+    catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException)
+    {
+        log.WriteLine($"Couldn't send to {send.Host}: {ex.Message}");
+        return 4;
+    }
+}
 return 0;
 
 /// <summary>Progress&lt;T&gt; posts to the thread pool; a console needs it in order.</summary>

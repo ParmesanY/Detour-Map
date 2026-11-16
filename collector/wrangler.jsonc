@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "detour-map-collector",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  // Request logs would hold client IPs: keep Workers Logs off.
+  "observability": { "enabled": false },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "detour-map",
+      // Filled in on the first deploy (wrangler d1 create detour-map); local dev doesn't need it.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Rebuilds today's and yesterday's aggregates, clears pseudonyms and old reports.
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "vars": {
+    // A cell (target × ISP × region × day) is shown only with at least this many distinct reporters.
+    "MIN_REPORTERS": "3",
+    // Reports per pseudonym (≈ one IP) per hour.
+    "RATE_LIMIT_PER_HOUR": "6",
+    // Edge cache of the read API, seconds (0 = off).
+    "CACHE_SECONDS": "120"
+  }
+}
