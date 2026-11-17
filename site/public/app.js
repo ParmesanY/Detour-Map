@@ -277,7 +277,8 @@ function renderOutages(auto) {
   $("map-note").innerHTML =
     `${why}Сбои связи — когда регион заметно пропадает из интернета (BGP, активный пинг, телескоп) по данным ` +
     `<a href="${esc(external.ioda.url)}" rel="noopener" target="_blank">IODA</a>, ${esc(fmtDate(external.ioda.since))} — ${esc(fmtDate(external.ioda.until))}. ` +
-    `Отключения мобильного интернета с «белыми списками» видны не всегда.`;
+    `Отключения мобильного интернета с «белыми списками» видны не всегда.` +
+    radarNote();
   $("map-note").hidden = false;
   $("map-sub").textContent = "сбои связи по регионам за 7 дней · IODA";
 
@@ -538,7 +539,52 @@ function renderExternal() {
       .join("")}</ul></div>`);
   }
 
+  const radar = radarBlock();
+  if (radar) blocks.push(radar);
+
   box.innerHTML = blocks.length ? blocks.join("") : `<p class="muted">Для этой цели других источников нет.</p>`;
+}
+
+const CAUSES = {
+  GOVERNMENT_DIRECTED: "по решению властей",
+  POWER_OUTAGE: "отключение электричества",
+  CABLE_CUT: "обрыв кабеля",
+  TECHNICAL_PROBLEMS: "технические проблемы",
+  WEATHER: "погода",
+  MILITARY_ACTION: "боевые действия",
+  MAINTENANCE: "работы",
+};
+const isoDate = (s) => (s ? fmtDate(String(s).slice(0, 10)) : "…");
+
+function radarNote() {
+  const n = external?.radar?.outages?.length ?? 0;
+  return n > 0 ? ` Cloudflare Radar за 4 недели подтвердил отключений: ${n} — список в «Других источниках» ниже.` : "";
+}
+
+/** Cloudflare Radar, whole country: verified outages and the ISPs whose traffic dropped. Same for every target. */
+function radarBlock() {
+  const r = external?.radar;
+  if (!r || r.error) return null;
+  const outages = (r.outages ?? []).slice(0, 8);
+  const anomalies = (r.anomalies ?? []).filter((a) => a.asn?.asn).slice(0, 8);
+  if (!outages.length && !anomalies.length) {
+    return `<div class="ext-block"><div class="ext-head"><span class="label">Cloudflare Radar, 4 недели</span>${link(r.url, "Radar")}</div>
+      <div class="ext-line muted">Отключений и аномалий трафика в России не отмечено.</div></div>`;
+  }
+  const outageItems = outages
+    .map((o) => {
+      const who = o.asns.map((a) => a.name || `AS${a.asn}`).join(", ");
+      const what = [o.scope, who, CAUSES[o.cause] ?? ""].filter(Boolean).join(" · ");
+      return `<li><span class="mono muted">${esc(isoDate(o.start))}</span> ${esc(what || o.description || "отключение")}${o.link ? ` ${link(o.link, "подробнее")}` : ""}</li>`;
+    })
+    .join("");
+  const anomalyItems = anomalies
+    .map((a) => `<li><span class="mono muted">${esc(isoDate(a.start))}</span> ${esc(a.asn.name || "—")} <span class="mono muted">AS${a.asn.asn}</span>${a.region ? ` · ${esc(a.region)}` : ""}</li>`)
+    .join("");
+  return `<div class="ext-block"><div class="ext-head"><span class="label">Cloudflare Radar, 4 недели</span>${link(r.url, "Radar")}</div>
+    ${outageItems ? `<div class="ext-line">Подтверждённые отключения</div><ul class="events">${outageItems}</ul>` : ""}
+    ${anomalyItems ? `<div class="ext-line">Провалы трафика у провайдеров</div><ul class="events">${anomalyItems}</ul>` : ""}
+    <div class="ext-line muted">Данные Cloudflare Radar: CC BY-NC 4.0.</div></div>`;
 }
 
 /** OONI's view of a target over 7 days, or null when it has too few measurements to say anything. */

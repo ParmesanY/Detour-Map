@@ -182,6 +182,66 @@ async function ioda() {
   };
 }
 
+// ---- Cloudflare Radar: verified outages and traffic anomalies ----
+
+/**
+ * Needs CLOUDFLARE_RADAR_TOKEN (an API token with Account → Radar → Read; a GitHub Actions secret).
+ * Radar data is CC BY-NC 4.0. Fields are read defensively: whatever Radar leaves out stays out.
+ */
+async function radar() {
+  const token = process.env.CLOUDFLARE_RADAR_TOKEN;
+  if (!token) return { error: "no CLOUDFLARE_RADAR_TOKEN" };
+  const call = async (path) => {
+    const res = await fetch(`https://api.cloudflare.com/client/v4/radar/${path}`, {
+      headers: { Authorization: `Bearer ${token}`, "User-Agent": UA },
+      signal: AbortSignal.timeout(60_000),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body.success === false) {
+      throw new Error(`${path.split("?")[0]}: HTTP ${res.status} ${JSON.stringify(body.errors ?? "").slice(0, 200)}`);
+    }
+    return body.result ?? {};
+  };
+  const asnInfo = (a) => ({ asn: Number(a?.asn), name: a?.name ?? "" });
+  const result = {
+    source: "Cloudflare Radar",
+    url: "https://radar.cloudflare.com/ru",
+    license: "CC BY-NC 4.0",
+    since: day(since),
+    until: day(until),
+  };
+  try {
+    const r = await call("annotations/outages?location=RU&dateRange=28d&limit=50&format=json");
+    result.outages = (r.annotations ?? []).map((a) => ({
+      start: a.startDate ?? null,
+      end: a.endDate ?? null,
+      scope: a.scope ?? "",
+      description: a.description ?? "",
+      cause: a.outage?.outageCause ?? "",
+      type: a.outage?.outageType ?? "",
+      asns: (a.asnsDetails ?? []).map(asnInfo),
+      link: a.linkedUrl ?? "",
+    }));
+  } catch (e) {
+    result.outages_error = String(e.message ?? e);
+  }
+  try {
+    const r = await call("traffic_anomalies?location=RU&dateRange=28d&limit=50&format=json");
+    result.anomalies = (r.trafficAnomalies ?? []).map((a) => ({
+      start: a.startDate ?? null,
+      end: a.endDate ?? null,
+      type: a.type ?? "",
+      status: a.status ?? "",
+      asn: a.asnDetails ? asnInfo(a.asnDetails) : null,
+      region: a.locationDetails?.name ?? a.locationDetails?.code ?? "",
+    }));
+  } catch (e) {
+    result.anomalies_error = String(e.message ?? e);
+  }
+  if (result.outages_error && result.anomalies_error) throw new Error(`${result.outages_error}; ${result.anomalies_error}`);
+  return result;
+}
+
 // ---- RKN register (antifilter) ----
 
 async function lines(url) {
@@ -234,8 +294,8 @@ const settle = async (fn) => {
   }
 };
 
-const data = { generated: new Date().toISOString(), ooni: await settle(ooni), rkn: await settle(rkn), ioda: await settle(ioda), events };
+const data = { generated: new Date().toISOString(), ooni: await settle(ooni), rkn: await settle(rkn), ioda: await settle(ioda), radar: await settle(radar), events };
 await mkdir(dirname(out), { recursive: true });
 await writeFile(out, JSON.stringify(data));
 const ok = (x) => (x.error ? `error: ${x.error}` : "ok");
-console.log(`external.json: ooni ${ok(data.ooni)}, rkn ${ok(data.rkn)}, ioda ${ok(data.ioda)}, ${events.length} events`);
+console.log(`external.json: ooni ${ok(data.ooni)}, rkn ${ok(data.rkn)}, ioda ${ok(data.ioda)}, radar ${ok(data.radar)}, ${events.length} events`);
