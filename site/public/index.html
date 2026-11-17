@@ -44,7 +44,7 @@
       </section>
 
       <section class="panel targets" aria-labelledby="targets-title">
-        <h2 id="targets-title" class="panel-title">Сервисы <span class="hint">доля замеров с блокировкой</span></h2>
+        <h2 id="targets-title" class="panel-title">Сервисы <span class="hint">доля замеров с блокировкой; ≈ и оранжевый — аномалии OONI, где наших данных мало</span></h2>
         <ul id="target-list" class="target-list" role="listbox" aria-label="Сервис"></ul>
       </section>
     </aside>
@@ -86,6 +86,7 @@
 
         <section class="panel" aria-labelledby="history-title">
           <h2 id="history-title" class="panel-title">История, 30 дней <span class="hint" id="history-sub"></span></h2>
+          <div id="history-legend" class="chart-legend" hidden><span><i></i>наши замеры: доля с блокировкой</span><span><i class="line"></i>OONI: доля аномалий</span></div>
           <svg id="history" class="history" role="img" aria-labelledby="history-title"></svg>
         </section>
       </div>

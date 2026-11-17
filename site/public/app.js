@@ -126,6 +126,12 @@ function syncControls() {
 
 function renderTargets(summary) {
   const byId = new Map(summary.targets.map((t) => [t.target, t]));
+  const rank = (t) => {
+    const s = byId.get(t.id);
+    if (s) return 2 + s.blocked;
+    const o = ooniOf(t.id);
+    return o ? 1 + o.share : 0;
+  };
   const list = $("target-list");
   list.innerHTML = "";
   const items = [
@@ -135,7 +141,8 @@ function renderTargets(summary) {
   for (const kind of Object.keys(GROUPS)) {
     const group = items
       .filter((t) => t.kind === kind)
-      .sort((a, b) => (byId.get(b.id)?.blocked ?? -1) - (byId.get(a.id)?.blocked ?? -1) || a.name.localeCompare(b.name));
+      // Ours first (by share), then OONI-only (by share), then nothing; OONI never outranks our own data.
+      .sort((a, b) => rank(b) - rank(a) || a.name.localeCompare(b.name));
     if (group.length === 0) continue;
     const h = document.createElement("li");
     h.className = "group";
@@ -149,10 +156,17 @@ function renderTargets(summary) {
       li.tabIndex = 0;
       li.dataset.id = t.id;
       li.setAttribute("aria-selected", String(t.id === state.target));
+      const o = s ? null : ooniOf(t.id);
       li.innerHTML = s
         ? `<span class="name">${esc(t.name)}</span><span class="meter"><i data-w="${Math.round(s.blocked * 100)}"></i></span><span class="val">${pct(s.blocked)}</span>`
-        : `<span class="name">${esc(t.name)}</span><span></span><span class="val nodata-dash">—</span>`;
-      li.title = s ? `${t.name}: блокировка в ${pct(s.blocked)} замеров, ${s.reporters} участн.` : `${t.name}: мало данных`;
+        : o
+          ? `<span class="name">${esc(t.name)}</span><span class="meter ooni"><i data-w="${Math.round(o.share * 100)}"></i></span><span class="val ooni">≈${pct(o.share)}</span>`
+          : `<span class="name">${esc(t.name)}</span><span></span><span class="val nodata-dash">—</span>`;
+      li.title = s
+        ? `${t.name}: блокировка в ${pct(s.blocked)} замеров, ${s.reporters} участн.`
+        : o
+          ? `${t.name}: наших данных мало; по OONI за 7 дней аномалии в ${pct(o.share)} из ${num(o.measurements)} замеров`
+          : `${t.name}: мало данных`;
       const pick = () => {
         state.target = t.id;
         writeUrl();
@@ -264,6 +278,24 @@ function renderIsps(data) {
         )
         .join("")
     : `<tr class="empty"><td colspan="4">Нет провайдеров с тремя и более участниками</td></tr>`;
+  // OONI knows ISPs but not regions: its rows only for the whole country, under their own heading.
+  const o = state.region ? null : ooniOf(state.target);
+  if (o && o.raw.asns?.length) {
+    $("isp-rows").innerHTML +=
+      `<tr class="src-head"><td colspan="4">OONI, 7 дней: замеры и доля аномалий</td></tr>` +
+      o.raw.asns
+        .filter((a) => a.measurements >= 10)
+        .map((a) => {
+          const sh = (a.anomaly + a.confirmed) / a.measurements;
+          return `<tr>
+            <td>${esc(asnName(a.asn) || "—")}<span class="asn">AS${a.asn}</span></td>
+            <td class="num">${num(a.measurements)}</td>
+            <td><span class="bar"><span class="meter ooni"><i data-w="${Math.round(sh * 100)}"></i></span>≈${pct(sh)}</span></td>
+            <td class="method muted">аномалии OONI</td>
+          </tr>`;
+        })
+        .join("");
+  }
   applyMeters();
 }
 
@@ -293,32 +325,70 @@ function renderHistory(data) {
     out += `<line class="${v === 0 ? "baseline" : "gridline"}" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/>`;
     out += `<text class="tick" x="${m.l - 6}" y="${y(v) + 3}" text-anchor="end">${v * 100}%</text>`;
   }
+  // OONI, whole country only (it has no regions): a line over our bars, same 0–100% axis.
+  const ooni = state.region ? null : ooniOf(state.target);
+  const ooniByDay = new Map((ooni?.raw.days ?? []).filter((d) => d.measurements >= 5).map((d) => [d.day, d]));
+  const ooniShare = (d) => (d.anomaly + d.confirmed) / d.measurements;
+  $("history-legend").hidden = ooniByDay.size === 0;
+
   days.forEach((day, i) => {
     const x = m.l + i * step + 1;
     const d = byDay.get(day);
+    if (d || ooniByDay.has(day)) {
+      out += `<rect class="hit" data-day="${day}" x="${x - 1}" y="${m.t}" width="${step}" height="${ih}"/>`;
+    }
     if (d) {
       const h = Math.max(d.blocked > 0 ? 2 : 0, ih * d.blocked);
       // Rounded data-end, square on the baseline.
       const r = Math.min(4, h / 2, bw / 2);
       const top = y(0) - h;
-      out += `<rect class="hit" data-day="${day}" x="${x - 1}" y="${m.t}" width="${step}" height="${ih}"/>`;
       out +=
         h > 0
           ? `<path class="bar" d="M${x},${y(0)} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${y(0)} Z"/>`
           : `<path class="bar"/>`;
+    } else if (ooniByDay.has(day)) {
+      out += `<path class="bar"/>`; // keeps .hit + .bar pairs for the hover rule
     }
     // A date every 7 days, counted from today so the last bar is always labelled.
     if ((days.length - 1 - i) % 7 === 0) {
       out += `<text class="tick" x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${day.slice(8, 10)}.${day.slice(5, 7)}</text>`;
     }
   });
-  if (data.days.length === 0) {
+  // The line breaks over days OONI has no data for, instead of bridging them.
+  let path = "";
+  let open = false;
+  const dots = [];
+  days.forEach((day, i) => {
+    const o = ooniByDay.get(day);
+    if (!o) {
+      open = false;
+      return;
+    }
+    const cx = m.l + i * step + 1 + bw / 2;
+    const cy = y(ooniShare(o));
+    path += `${open ? "L" : "M"}${cx.toFixed(1)},${cy.toFixed(1)} `;
+    open = true;
+    dots.push([cx, cy]);
+  });
+  if (path) {
+    out += `<path class="ooni-line" d="${path}"/>`;
+    // The last point gets a marker: where the line ends today.
+    const [lx, ly] = dots[dots.length - 1];
+    out += `<circle class="ooni-dot" cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4"/>`;
+  }
+
+  if (data.days.length === 0 && ooniByDay.size === 0) {
     out += `<text class="empty" x="${m.l + iw / 2}" y="${m.t + ih / 2}" text-anchor="middle">Пока нет дней с тремя и более участниками</text>`;
   }
   svg.innerHTML = out;
   for (const hit of svg.querySelectorAll(".hit")) {
     const d = byDay.get(hit.dataset.day);
-    hit.addEventListener("pointermove", (e) => showTip(`<b>${hit.dataset.day}</b>${statRows(d)}`, e));
+    const o = ooniByDay.get(hit.dataset.day);
+    const ours = d ? statRows(d) : `<div class="row"><span>Наши замеры</span><span>мало данных</span></div>`;
+    const theirs = o
+      ? `<div class="row ooni"><span>OONI, аномалии</span><span>${pct(ooniShare(o))} из ${num(o.measurements)}</span></div>`
+      : "";
+    hit.addEventListener("pointermove", (e) => showTip(`<b>${hit.dataset.day}</b>${ours}${theirs}`, e));
     hit.addEventListener("pointerleave", hideTip);
   }
 }
@@ -397,6 +467,16 @@ function renderExternal() {
 
   box.innerHTML = blocks.length ? blocks.join("") : `<p class="muted">Для этой цели других источников нет.</p>`;
 }
+
+/** OONI's view of a target over 7 days, or null when it has too few measurements to say anything. */
+const OONI_MIN = 30;
+function ooniOf(id) {
+  const o = external?.ooni?.targets?.[id];
+  if (!o || o.error || !(o.measurements >= OONI_MIN)) return null;
+  return { share: (o.anomaly + o.confirmed) / o.measurements, measurements: o.measurements, raw: o };
+}
+
+const asnName = (asn) => external?.ooni?.asn_names?.[asn] ?? "";
 
 function hostOf(id) {
   return (targets.find((t) => t.id === id)?.host ?? "").replace(/^www\./, "");

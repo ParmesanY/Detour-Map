@@ -22,6 +22,8 @@ const withHost = targets.filter((t) => t.host && (t.kind ?? "site") !== "control
 const day = (d) => d.toISOString().slice(0, 10);
 const until = new Date();
 const since = new Date(until.getTime() - OONI_DAYS * 86400_000);
+const HISTORY_DAYS = 30;
+const historySince = new Date(until.getTime() - (HISTORY_DAYS - 1) * 86400_000);
 
 async function get(url, timeoutMs = 60_000) {
   const res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(timeoutMs) });
@@ -64,6 +66,46 @@ async function ooniFor(domain) {
   };
 }
 
+/** The whole country, by day, for the last HISTORY_DAYS: the second series on the site's history chart. */
+async function ooniDaily(domain) {
+  const q = new URLSearchParams({
+    probe_cc: "RU",
+    test_name: "web_connectivity",
+    domain,
+    since: day(historySince),
+    until: day(until),
+    axis_x: "measurement_start_day",
+    time_grain: "day",
+  });
+  const body = await (await get(`https://api.ooni.io/api/v1/aggregation?${q}`)).json();
+  return (body.result ?? [])
+    .filter((r) => r.measurement_count > 0)
+    .map((r) => ({
+      day: String(r.measurement_start_day).slice(0, 10),
+      measurements: r.measurement_count,
+      anomaly: r.anomaly_count,
+      confirmed: r.confirmed_count,
+      ok: r.ok_count,
+    }));
+}
+
+/** ISP names for ASNs from RIPEstat ("ROSTELECOM-AS PJSC Rostelecom" → "PJSC Rostelecom"). Missing names stay missing. */
+async function asnNames(asns) {
+  const names = {};
+  for (const asn of [...new Set(asns)].sort((a, b) => a - b)) {
+    try {
+      const body = await (await get(`https://stat.ripe.net/data/as-overview/data.json?resource=AS${asn}`, 20_000)).json();
+      const holder = String(body?.data?.holder ?? "").trim();
+      if (!holder) continue;
+      const parts = holder.split(/\s+/);
+      names[asn] = parts.length > 1 && /^[A-Z0-9-]+$/.test(parts[0]) ? parts.slice(1).join(" ") : holder;
+    } catch {
+      // a name is a nicety
+    }
+  }
+  return names;
+}
+
 async function ooni() {
   const result = { source: "OONI Explorer / API", url: "https://explorer.ooni.org/", license: "CC BY-NC-SA 4.0", since: day(since), until: day(until), targets: {} };
   for (const t of withHost) {
@@ -76,11 +118,13 @@ async function ooni() {
         const www = await ooniFor(`www.${bare}`);
         if (www.measurements > 0) r = www;
       }
+      if (r.measurements > 0) r.days = await ooniDaily(r.domain);
       result.targets[t.id] = r;
     } catch (e) {
       result.targets[t.id] = { error: String(e.message ?? e) };
     }
   }
+  result.asn_names = await asnNames(Object.values(result.targets).flatMap((t) => (t.asns ?? []).map((a) => a.asn)));
   return result;
 }
 

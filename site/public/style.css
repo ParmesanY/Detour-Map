@@ -11,6 +11,7 @@
   --muted: #6e7783;
   --accent: #4f8cff;
   --accent-soft: rgba(79, 140, 255, 0.15);
+  --ooni: #c27c2c; /* OONI layer; validated against --accent on the dark panel */
   --on-accent: #ffffff;
   /* Blocked share, 5 classes (validated ordinal ramp on --panel). */
   --c0: #2e4d7a;
@@ -37,6 +38,7 @@
     --muted: #6a717c;
     --accent: #2a6ee0;
     --accent-soft: rgba(42, 110, 224, 0.1);
+    --ooni: #b8660f;
     --c0: #86b6ef;
     --c1: #5598e7;
     --c2: #2a78d6;
@@ -280,3 +282,14 @@ table.data .empty td { color: var(--muted); text-align: center; padding: 18px 8p
 .data.compact td, .data.compact th { padding-top: 3px; padding-bottom: 3px; }
 .events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; }
 .events .mono { font-size: 12px; margin-right: 4px; }
+
+/* OONI layer: its own colour, an "≈" in values and a legend, never mixed into our bars */
+.meter.ooni > i { background: var(--ooni); }
+.target-list .val.ooni { color: var(--muted); }
+table.data tr.src-head td { color: var(--muted); font: 11px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding-top: 12px; }
+.history .ooni-line { fill: none; stroke: var(--ooni); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.history .ooni-dot { fill: var(--ooni); stroke: var(--panel); stroke-width: 2; }
+.chart-legend { display: flex; gap: 14px; flex-wrap: wrap; font: 11px var(--mono); color: var(--muted); margin: -4px 0 6px; }
+.chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: var(--accent); }
+.chart-legend i.line { height: 2px; width: 14px; vertical-align: 3px; background: var(--ooni); }
+.tip .row.ooni span:first-child::before { content: ""; display: inline-block; width: 8px; height: 2px; margin-right: 5px; vertical-align: 3px; background: var(--ooni); }
