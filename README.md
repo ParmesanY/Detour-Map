@@ -36,6 +36,23 @@ Then it says what it found and what helps, e.g. "DPI by site name; a split Clien
 strategies should work", "IP block: needs a VPN", "freezes after ~16 KB". Output: colored text, `--json`, `--markdown`.
 Exit code 1 when something is blocked. The report holds the site's addresses, never yours.
 
+### tune: find a strategy that opens a site
+
+```
+dotnet run --project probe/Detour.NetProbe.Cli -- tune rutracker.org --winws C:\zapret\bin\winws.exe   # as administrator
+dotnet run --project probe/Detour.NetProbe.Cli -- tune x.com --byedpi C:\byedpi\ciadpi.exe --all
+```
+
+Traces the site first and rules out what can't help: an address block stops right there (it needs a VPN), a split
+ClientHello that already got through puts plain splits first, one that was cut skips them and starts with fakes.
+Then it starts the bypass with one strategy after another (winws: about 13, from Flowseal's sets; ByeDPI: 14) and
+checks each the way a browser connects: TLS with the real name, then 64 KB, twice. It prints the best one, ready to
+paste: winws args with `%BIN%` for a .bat, or a `ciadpi` command line.
+
+winws asks before it starts and touches only TCP 443 to that one domain (`--hostlist-domains`) on the physical card;
+it is killed after each strategy and at the end. ByeDPI runs as a local proxy on 127.0.0.1 and needs no admin rights.
+Stop any running zapret, GoodbyeDPI or ByeDPI first.
+
 Each connection is bound to the physical network card, so a running VPN doesn't hide the ISP. A DPI bypass
 (zapret, GoodbyeDPI, ByeDPI) does: stop it before probing.
 

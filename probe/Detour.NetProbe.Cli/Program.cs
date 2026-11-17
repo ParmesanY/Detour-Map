@@ -9,6 +9,10 @@ if (args is ["trace", .. var traceArgs])
 {
     return await Detour.NetProbe.Cli.TraceCommand.RunAsync(traceArgs);
 }
+if (args is ["tune", .. var tuneArgs])
+{
+    return await Detour.NetProbe.Cli.TuneCommand.RunAsync(tuneArgs);
+}
 
 var net = "home";
 string? targetsFile = null;
@@ -40,6 +44,7 @@ for (var i = 0; i < args.Length; i++)
             Console.WriteLine("""
                 detour-probe — what your ISP blocks and how (DNS, IP, SNI, 16 KB freeze, QUIC, throttling).
                 detour-probe trace <domain>   — how exactly one site is blocked, and what helps (see trace --help)
+                detour-probe tune <domain>    — find a zapret / ByeDPI strategy that opens it (see tune --help)
                 Changes nothing on the computer. Sends nothing anywhere unless --send is given.
 
                   --net home|mobile   connection type (default home)

@@ -8,7 +8,8 @@ namespace Detour.NetProbe;
 /// The default physical network card. Every probe binds to its address, so a VPN tunnel (which owns the
 /// default route) doesn't carry it, and DNS goes to the card's own resolvers, not to the tunnel's.
 /// </summary>
-public sealed record NicInfo(string Name, IPAddress Address, IReadOnlyList<IPAddress> DnsServers)
+/// <param name="IfIndex">Windows interface index (winws <c>--wf-iface</c>), 0 if unknown.</param>
+public sealed record NicInfo(string Name, IPAddress Address, IReadOnlyList<IPAddress> DnsServers, int IfIndex = 0)
 {
     private static readonly HashSet<NetworkInterfaceType> _physicalTypes =
     [
@@ -57,7 +58,16 @@ public sealed record NicInfo(string Name, IPAddress Address, IReadOnlyList<IPAdd
                 return null;
             }
             var dns = props.DnsAddresses.Where(a => a.AddressFamily == AddressFamily.InterNetwork).ToList();
-            return new NicInfo(nic.Name, address, dns);
+            int index;
+            try
+            {
+                index = props.GetIPv4Properties()?.Index ?? 0;
+            }
+            catch (NetworkInformationException)
+            {
+                index = 0;
+            }
+            return new NicInfo(nic.Name, address, dns, index);
         }
         catch (NetworkInformationException)
         {
