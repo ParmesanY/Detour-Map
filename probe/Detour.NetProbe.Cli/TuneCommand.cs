@@ -21,6 +21,12 @@ internal static class TuneCommand
           --yes             don't ask before starting winws
           --json            print the report as JSON
           --out FILE        also save the JSON report to FILE
+          --registry URL    ask this Detour Map collector which strategies work for your ISP and try them first
+                            (each is still checked here before it counts)
+          --share           send the results to the registry (needs --registry): the engine, the strategies and
+                            how they did, the connection type, and the site only if it's in the public target list.
+                            The collector sees your IP to tell the ISP and stores neither.
+          --net home|mobile connection type for --share (default home)
 
         winws only touches TCP 443 to this one domain, on the physical network card; it is stopped after each
         strategy and when the command ends. Stop zapret, GoodbyeDPI or ByeDPI before tuning.
@@ -35,11 +41,23 @@ internal static class TuneCommand
         var yes = false;
         var json = false;
         var repeats = 2;
+        var share = false;
+        var net = "home";
+        Uri? registry = null;
         for (var i = 0; i < args.Length; i++)
         {
             string? Next() => i + 1 < args.Length ? args[++i] : null;
             switch (args[i])
             {
+                case "--share": share = true; break;
+                case "--net": net = Next() ?? ""; break;
+                case "--registry":
+                    if (!Uri.TryCreate(Next(), UriKind.Absolute, out registry) || registry.Scheme is not ("https" or "http"))
+                    {
+                        Console.Error.WriteLine("--registry needs the collector's address, e.g. https://map.example.org");
+                        return 2;
+                    }
+                    break;
                 case "--winws": winws = Next(); break;
                 case "--byedpi": byedpi = Next(); break;
                 case "--all": all = true; break;
@@ -65,6 +83,16 @@ internal static class TuneCommand
                     host = args[i];
                     break;
             }
+        }
+        if (share && registry is null)
+        {
+            Console.Error.WriteLine("--share needs --registry URL.");
+            return 2;
+        }
+        if (net is not ("home" or "mobile"))
+        {
+            Console.Error.WriteLine("--net is home or mobile.");
+            return 2;
         }
         host = TraceCommand.NormalizeHost(host);
         if (host is null)
@@ -131,7 +159,21 @@ internal static class TuneCommand
         await using ITuneEngine engine = winws is not null
             ? new WinwsEngine(winws, nic?.IfIndex ?? 0)
             : new ByeDpiEngine(byedpi!, nic?.Address);
-        var count = plan.StopCode is null ? plan.Pick(engine.Catalog).Count(engine.CanRun) : engine.Catalog.Count(engine.CanRun);
+        StrategyHints? hints = null;
+        if (registry is not null)
+        {
+            hints = await Registry.GetHintsAsync(registry, engine.Name, Registry.TargetIdForHost(host), nic, cancel.Token);
+            if (!json)
+            {
+                Console.WriteLine(hints is null
+                    ? "  registry: not reachable, tuning without it"
+                    : $"  registry: {hints.Strategies.Count} strategies known to work for {hints.AsOrg ?? $"AS{hints.Asn}"}");
+            }
+        }
+        var hinted = Registry.Candidates(engine, hints?.Strategies ?? []);
+        var count = hinted.Count(engine.CanRun)
+                    + (plan.StopCode is null ? plan.Pick(engine.Catalog) : [.. engine.Catalog])
+                        .Count(c => engine.CanRun(c) && hinted.All(h => h.Name != c.Name));
         if (winws is not null && !yes)
         {
             Console.WriteLine();
@@ -167,6 +209,7 @@ internal static class TuneCommand
                 Repeats = repeats,
                 All = all,
                 Force = force,
+                Hints = hints?.Strategies,
                 Starting = json ? null : new SyncProgress<TuneCandidate>(c => Console.Write($"  {c.Name,-24} …")),
                 Progress = json ? null : new SyncProgress<TuneResult>(PrintRow),
             }, cancel.Token);
@@ -176,7 +219,30 @@ internal static class TuneCommand
             Console.Error.WriteLine("\n  Stopped.");
             return 130;
         }
-        return Finish(report, json, outFile);
+        var code = Finish(report, json, outFile);
+        if (share)
+        {
+            var strategyReport = Registry.BuildReport(report, $"detour-tune/{version}", net);
+            if (strategyReport is null)
+            {
+                Console.Error.WriteLine("  Nothing to share: the site wasn't blocked, or no strategy ran.");
+            }
+            else
+            {
+                try
+                {
+                    var sent = await Registry.SendAsync(strategyReport, registry!, nic, cancel.Token);
+                    Console.Error.WriteLine(sent.Accepted
+                        ? $"  Shared {sent.Stored} strategies with the registry. Thanks!"
+                        : $"  The registry refused the results ({sent.HttpStatus}): {sent.Error}");
+                }
+                catch (HttpRequestException ex)
+                {
+                    Console.Error.WriteLine($"  Couldn't reach the registry: {ex.Message}");
+                }
+            }
+        }
+        return code;
     }
 
     private static int Finish(TuneReport report, bool json, string? outFile)

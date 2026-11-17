@@ -1,6 +1,7 @@
 // Detour Map collector: takes probe reports, keeps aggregates, serves them to the map site.
 // Never logs requests: they carry client IPs.
-import { ingest, originOf } from "./ingest";
+import { ingest, originOf, type Origin } from "./ingest";
+import { ingestStrategies } from "./strategies";
 import { handleApi, QueryError } from "./api";
 import { runMaintenance } from "./aggregate";
 import { MAX_BODY_BYTES } from "./report";
@@ -19,7 +20,9 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}): 
   });
 }
 
-async function postReport(request: Request, env: Env): Promise<Response> {
+type Ingest = (env: Env, body: unknown, origin: Origin) => Promise<{ status: number; body: unknown }>;
+
+async function post(request: Request, env: Env, handler: Ingest): Promise<Response> {
   const length = Number(request.headers.get("Content-Length") ?? "0");
   if (length > MAX_BODY_BYTES) {
     return json({ accepted: false, error: "too large" }, 413);
@@ -38,7 +41,7 @@ async function postReport(request: Request, env: Env): Promise<Response> {
   } catch {
     return json({ accepted: false, error: "not JSON" }, 400);
   }
-  const result = await ingest(env, body, origin);
+  const result = await handler(env, body, origin);
   return json(result.body, result.status);
 }
 
@@ -81,7 +84,19 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
     if (request.method === "POST" && url.pathname === "/v1/report") {
-      return postReport(request, env);
+      return post(request, env, ingest);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/strategies") {
+      return post(request, env, ingestStrategies);
+    }
+    if (request.method === "GET" && url.pathname === "/v1/strategies" && !url.searchParams.get("asn")) {
+      // "For my ISP": the asking connection's ASN goes into the URL, so the cache keys on it too.
+      const asn = (request.cf as IncomingRequestCfProperties | undefined)?.asn;
+      if (!asn) {
+        return json({ error: "no network data for this connection: pass asn" }, 400);
+      }
+      url.searchParams.set("asn", String(asn));
+      return get(new Request(url.toString(), request), env, ctx);
     }
     if (request.method === "GET") {
       return get(request, env, ctx);

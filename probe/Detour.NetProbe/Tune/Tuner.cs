@@ -17,6 +17,8 @@ public sealed class TuneOptions
     public bool All { get; init; }
     /// <summary>Tune even when the plan says there is nothing to win (open site, address block).</summary>
     public bool Force { get; init; }
+    /// <summary>Strategies the registry recommends for this ISP: tried first, each checked here like any other.</summary>
+    public IReadOnlyList<StrategyHint>? Hints { get; init; }
     /// <summary>Called after each strategy (and the baseline) with its result.</summary>
     public IProgress<TuneResult>? Progress { get; init; }
     /// <summary>Called before each strategy starts.</summary>
@@ -81,7 +83,13 @@ public static class Tuner
             return report;
         }
 
-        var candidates = plan.Pick(engine.Catalog);
+        var hinted = Registry.Candidates(engine, options.Hints ?? []);
+        if (hinted.Count > 0)
+        {
+            report.Notes.Add($"{hinted.Count} strategies from the registry for this ISP go first.");
+        }
+        var candidates = hinted.Concat(plan.Pick(engine.Catalog).Where(c => hinted.All(h => h.Name != c.Name))).ToList();
+        report.Hinted = [.. hinted.Select(c => c.Name)];
         var missing = candidates.Count(c => !engine.CanRun(c));
         if (missing > 0)
         {

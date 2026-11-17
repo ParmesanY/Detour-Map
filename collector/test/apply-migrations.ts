@@ -9,5 +9,7 @@ beforeEach(async () => {
     env.DB.prepare("DELETE FROM reports"),
     env.DB.prepare("DELETE FROM salts"),
     env.DB.prepare("DELETE FROM agg_daily"),
+    env.DB.prepare("DELETE FROM strategy_reports"),
+    env.DB.prepare("DELETE FROM strategy_daily"),
   ]);
 });

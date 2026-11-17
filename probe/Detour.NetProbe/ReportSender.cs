@@ -14,6 +14,8 @@ public sealed class SendResult
     public List<string>? Flags { get; set; }
     /// <summary>Target ID → verdicts as the collector computed them.</summary>
     public Dictionary<string, List<string>>? Verdicts { get; set; }
+    /// <summary>Strategy reports: how many strategies the registry kept.</summary>
+    public int? Stored { get; set; }
 }
 
 /// <summary>
@@ -22,10 +24,33 @@ public sealed class SendResult
 /// </summary>
 public static class ReportSender
 {
-    public static async Task<SendResult> SendAsync(ProbeReport report, Uri endpoint, NicInfo? nic, CancellationToken ct = default)
+    public static Task<SendResult> SendAsync(ProbeReport report, Uri endpoint, NicInfo? nic, CancellationToken ct = default) =>
+        PostAsync(endpoint, "/v1/report", JsonSerializer.Serialize(report, ProbeJson.Default.ProbeReport), nic, ct);
+
+    internal static async Task<SendResult> PostAsync(Uri endpoint, string path, string json, NicInfo? nic, CancellationToken ct)
     {
-        var local = nic?.Address;
-        using var doh = new DohResolver(local);
+        using var doh = new DohResolver(nic?.Address);
+        using var client = CreateClient(nic?.Address, doh);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var response = await client.PostAsync(new Uri(endpoint, path), content, ct);
+        var text = await response.Content.ReadAsStringAsync(ct);
+        SendResult? result = null;
+        try
+        {
+            result = JsonSerializer.Deserialize(text, ProbeJson.Default.SendResult);
+        }
+        catch (JsonException)
+        {
+            // not the collector's JSON (a proxy's error page, say)
+        }
+        result ??= new SendResult { Error = text.Length > 200 ? text[..200] : text };
+        result.HttpStatus = (int)response.StatusCode;
+        return result;
+    }
+
+    /// <summary>An HTTP client whose connections go out over the physical card, names resolved by DoH.</summary>
+    internal static HttpClient CreateClient(IPAddress? local, DohResolver doh)
+    {
         var handler = new SocketsHttpHandler
         {
             UseProxy = false,
@@ -52,22 +77,6 @@ public static class ReportSender
                 return new NetworkStream(socket, true);
             },
         };
-        using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
-        var json = JsonSerializer.Serialize(report, ProbeJson.Default.ProbeReport);
-        using var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await client.PostAsync(new Uri(endpoint, "/v1/report"), content, ct);
-        var text = await response.Content.ReadAsStringAsync(ct);
-        SendResult? result = null;
-        try
-        {
-            result = JsonSerializer.Deserialize(text, ProbeJson.Default.SendResult);
-        }
-        catch (JsonException)
-        {
-            // not the collector's JSON (a proxy's error page, say)
-        }
-        result ??= new SendResult { Error = text.Length > 200 ? text[..200] : text };
-        result.HttpStatus = (int)response.StatusCode;
-        return result;
+        return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
     }
 }

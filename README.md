@@ -53,6 +53,11 @@ winws asks before it starts and touches only TCP 443 to that one domain (`--host
 it is killed after each strategy and at the end. ByeDPI runs as a local proxy on 127.0.0.1 and needs no admin rights.
 Stop any running zapret, GoodbyeDPI or ByeDPI first.
 
+With `--registry URL` it first asks the collector which strategies worked for other people on the same ISP and
+tries those first; every hint is still checked locally, so a bad entry only costs a few seconds. `--share` sends the
+results back: the engine, each strategy's args and how it did, the connection type, and the site only if it is in
+the public target list (`spec/targets.json`), never any other site name.
+
 Each connection is bound to the physical network card, so a running VPN doesn't hide the ISP. A DPI bypass
 (zapret, GoodbyeDPI, ByeDPI) does: stop it before probing.
 
@@ -81,6 +86,13 @@ Deploy (once per Cloudflare account): `npx wrangler login --device`, `npx wrangl
 
 API: `POST /v1/report`, `GET /v1/targets`, `/v1/summary`, `/v1/map?target=`, `/v1/isps?target=`,
 `/v1/history?target=` (details in [docs/PLAN.md](docs/PLAN.md)).
+
+Strategy registry: `POST /v1/strategies` takes a tune run's results; `GET /v1/strategies?engine=winws|byedpi`
+returns the best strategies for the asking connection's ISP (or `&asn=N` for any other, open to other clients too),
+optionally `&target=ID&net=home|mobile&days=N`. A strategy shows up only when at least 3 different people tried it and
+it worked for more of them than it failed. The collector normalizes every strategy itself (context args dropped, an
+allowlist of desync options, files reduced to `%BIN%name.bin`), the same way as the client: rules in
+`collector/src/strategy.ts` and `probe/Detour.NetProbe/Tune/StrategyKey.cs`, shared cases in `spec/strategy-cases.json`.
 
 ## site
 

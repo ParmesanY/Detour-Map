@@ -2,6 +2,7 @@
 // MIN_REPORTERS reporters, so a single probe (or a single person in a small town) never shows up alone.
 import { addDays, utcDay } from "./privacy";
 import { TARGETS, TARGET_BY_ID, TARGETS_VERSION, WHITELIST_TARGET } from "./targets";
+import { strategiesApi } from "./strategies";
 
 export class QueryError extends Error {}
 
@@ -169,6 +170,9 @@ export async function handleApi(url: URL, env: Env, now = new Date()): Promise<u
         .all<Sums & { day: string }>();
       return { target: t, region, asn: asnText === null ? null : Number(asnText), days: results.map(({ day, ...s }) => ({ day, ...summarize(s) })) };
     }
+
+    case "/v1/strategies":
+      return strategiesApi(url, env, now);
 
     default:
       return undefined;

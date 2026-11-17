@@ -19,6 +19,9 @@ public static class StrategyClass
     public const string FakeSplit = "fakesplit";
 
     public static readonly string[] All = [Split, Disorder, TlsRec, Oob, FakeSplit, Fake];
+
+    /// <summary>A strategy from the registry that isn't in the built-in catalog.</summary>
+    public const string Registry = "registry";
 }
 
 /// <summary>

@@ -37,6 +37,8 @@ public sealed class TuneReport
     /// <summary>The site without any bypass, measured the same way.</summary>
     public TuneResult? Baseline { get; set; }
     public List<TuneResult> Results { get; set; } = [];
+    /// <summary>Names of the strategies that came from the registry (tried first).</summary>
+    public List<string> Hinted { get; set; } = [];
     /// <summary>Name of the best strategy; null if none got through even once.</summary>
     public string? Best { get; set; }
     /// <summary>Best passed every attempt (not just some).</summary>
