@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const out = join(root, "site", "public", "data", "external.json");
-const UA = "detour-map-external/0.1 (+https://github.com/ParmesanY/detour-map)";
+const UA = "detour-map-external/0.1 (+https://github.com/ParmesanY/Detour-Map)";
 const OONI_DAYS = 7;
 
 const { targets } = JSON.parse(await readFile(join(root, "spec", "targets.json"), "utf8"));

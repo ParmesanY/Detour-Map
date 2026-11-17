@@ -6,12 +6,12 @@
 
 Народная карта блокировок, инструмент диагностики и общая база стратегий обхода DPI.
 
-[![CI](https://github.com/ParmesanY/detour-map/actions/workflows/ci.yml/badge.svg)](https://github.com/ParmesanY/detour-map/actions/workflows/ci.yml)
+[![CI](https://github.com/ParmesanY/Detour-Map/actions/workflows/ci.yml/badge.svg)](https://github.com/ParmesanY/Detour-Map/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 [![Data: CC BY 4.0](https://img.shields.io/badge/data-CC%20BY%204.0-lightgrey.svg)](#данные-и-лицензии)
 
 [**Открыть карту**](https://detour-map-collector.detour-map-collector.workers.dev) ·
-[Зеркало на GitHub Pages](https://parmesany.github.io/detour-map/) ·
+[Зеркало на GitHub Pages](https://parmesany.github.io/Detour-Map/) ·
 [English](README.md)
 
 </div>

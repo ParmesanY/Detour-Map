@@ -2,7 +2,7 @@
 // regions.json); the GitHub Pages mirror asks the collector for /v1 and carries the rest itself.
 
 const COLLECTOR = "https://detour-map-collector.detour-map-collector.workers.dev";
-const PAGES = "https://parmesany.github.io/detour-map/";
+const PAGES = "https://parmesany.github.io/Detour-Map/";
 const ON_PAGES = location.hostname.endsWith("github.io");
 const API_BASE = ON_PAGES ? COLLECTOR : "";
 

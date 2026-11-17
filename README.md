@@ -6,12 +6,12 @@
 
 A crowdsourced block map, a diagnostic tool and a shared database of DPI bypass strategies.
 
-[![CI](https://github.com/ParmesanY/detour-map/actions/workflows/ci.yml/badge.svg)](https://github.com/ParmesanY/detour-map/actions/workflows/ci.yml)
+[![CI](https://github.com/ParmesanY/Detour-Map/actions/workflows/ci.yml/badge.svg)](https://github.com/ParmesanY/Detour-Map/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 [![Data: CC BY 4.0](https://img.shields.io/badge/data-CC%20BY%204.0-lightgrey.svg)](#data-and-licenses)
 
 [**Open the map**](https://detour-map-collector.detour-map-collector.workers.dev) ·
-[Mirror on GitHub Pages](https://parmesany.github.io/detour-map/) ·
+[Mirror on GitHub Pages](https://parmesany.github.io/Detour-Map/) ·
 [По-русски](README.ru.md)
 
 </div>
