@@ -20,6 +20,22 @@ dotnet run --project probe/Detour.NetProbe.Cli -- --only youtube,discord,x --jso
 dotnet run --project probe/Detour.NetProbe.Cli -- --send http://localhost:8787
 ```
 
+### trace: how exactly one site is blocked
+
+```
+dotnet run --project probe/Detour.NetProbe.Cli -- trace x.com
+dotnet run --project probe/Detour.NetProbe.Cli -- trace rutracker.org --markdown   # for a GitHub issue
+```
+
+Checks, in this order: the network (ya.ru), the ISP's DNS against DoH, TCP 443/80 to the real address, TLS with a
+neutral name, the site's name sent to an unrelated server, a ClientHello split into TCP segments, TLS 1.3 and 1.2
+alone, TLS as a browser does it plus a 64 KB download, plain HTTP for a block page, QUIC. The handshakes that don't
+send the name in one piece go first: TSPU may punish an address for a while after it saw a blocked name.
+
+Then it says what it found and what helps, e.g. "DPI by site name; a split ClientHello gets through, so zapret split
+strategies should work", "IP block: needs a VPN", "freezes after ~16 KB". Output: colored text, `--json`, `--markdown`.
+Exit code 1 when something is blocked. The report holds the site's addresses, never yours.
+
 Each connection is bound to the physical network card, so a running VPN doesn't hide the ISP. A DPI bypass
 (zapret, GoodbyeDPI, ByeDPI) does: stop it before probing.
 

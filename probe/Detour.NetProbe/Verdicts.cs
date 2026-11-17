@@ -97,7 +97,7 @@ public static class Classifier
         return verdicts.Count > 0 ? verdicts : [Verdict.Ok];
     }
 
-    private static string ClassifyHttp(HttpResult? h)
+    internal static string ClassifyHttp(HttpResult? h)
     {
         if (h is null)
         {

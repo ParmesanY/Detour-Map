@@ -179,7 +179,7 @@ public static class Prober
         return r;
     }
 
-    private static async Task<DnsAnswer?> QueryIspAsync(string host, Context ctx, CancellationToken ct)
+    internal static async Task<DnsAnswer?> QueryIspAsync(string host, Context ctx, CancellationToken ct)
     {
         foreach (var server in ctx.Nic?.DnsServers ?? [])
         {
@@ -207,7 +207,7 @@ public static class Prober
         }
     }
 
-    private static async Task<(string Outcome, Socket? Socket)> TcpAsync(IPAddress ip, int port, IPAddress? local, CancellationToken ct)
+    internal static async Task<(string Outcome, Socket? Socket)> TcpAsync(IPAddress ip, int port, IPAddress? local, CancellationToken ct)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(_connectTimeout);
@@ -221,7 +221,8 @@ public static class Prober
         }
     }
 
-    private static async Task<(string Outcome, SslStream? Stream)> TlsAsync(Stream stream, string sni, CancellationToken ct)
+    internal static async Task<(string Outcome, SslStream? Stream)> TlsAsync(Stream stream, string sni, CancellationToken ct,
+        SslProtocols protocols = SslProtocols.Tls12 | SslProtocols.Tls13)
     {
         var ssl = new SslStream(stream, leaveInnerStreamOpen: true, (_, _, _, _) => true);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -232,7 +233,7 @@ public static class Prober
             await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
             {
                 TargetHost = sni,
-                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                EnabledSslProtocols = protocols,
                 ApplicationProtocols = [SslApplicationProtocol.Http11],
             }, cts.Token);
             return (Outcome.Ok, ssl);
@@ -246,7 +247,7 @@ public static class Prober
     }
 
     /// <summary>GET, read up to 64 KB. A transfer that stops after a few KB is the "16 KB freeze".</summary>
-    private static async Task<HttpResult> HttpAsync(Stream ssl, string host, string path, CancellationToken ct)
+    internal static async Task<HttpResult> HttpAsync(Stream ssl, string host, string path, CancellationToken ct)
     {
         var result = new HttpResult();
         var sw = Stopwatch.StartNew();

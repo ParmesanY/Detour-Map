@@ -3,7 +3,12 @@ using System.Text.Json;
 using Detour.NetProbe;
 
 // detour-probe: measures what the ISP blocks and how, prints a table and saves the JSON report.
-// Sends it to a collector only when asked with --send.
+// Sends it to a collector only when asked with --send. `detour-probe trace <domain>` digs into one site.
+
+if (args is ["trace", .. var traceArgs])
+{
+    return await Detour.NetProbe.Cli.TraceCommand.RunAsync(traceArgs);
+}
 
 var net = "home";
 string? targetsFile = null;
@@ -34,6 +39,7 @@ for (var i = 0; i < args.Length; i++)
         case "--help" or "-h" or "/?":
             Console.WriteLine("""
                 detour-probe — what your ISP blocks and how (DNS, IP, SNI, 16 KB freeze, QUIC, throttling).
+                detour-probe trace <domain>   — how exactly one site is blocked, and what helps (see trace --help)
                 Changes nothing on the computer. Sends nothing anywhere unless --send is given.
 
                   --net home|mobile   connection type (default home)
