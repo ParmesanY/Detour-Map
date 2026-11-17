@@ -29,7 +29,14 @@ const binOf = (share) => {
 };
 const methodName = (m) => (m ? METHODS[m] ?? m : "—");
 
-const state = { target: "youtube", days: "1", net: "", region: null };
+/** Outage layer (IODA): hours with an outage per region over 7 days. */
+const HOUR_BINS = [1, 6, 24, 72];
+const HOUR_LABELS = ["<1 ч", "1–6", "6–24", "24–72", "72 ч+"];
+const SOURCE_NAMES = { bgp: "BGP", "ping-slash24": "активный пинг", "merit-nt": "телескоп", gtr: "Google" };
+
+const state = { target: "youtube", days: "1", net: "", region: null, layer: "auto" };
+/** What the map shows right now: the chosen layer, or outages when ours has nothing for this target. */
+let mapMode = "blocks";
 let targets = [];
 let regionShapes = new Map();
 let regionData = new Map();
@@ -42,6 +49,7 @@ function readUrl() {
   state.days = ["1", "7", "30"].includes(p.get("days")) ? p.get("days") : "1";
   state.net = ["home", "mobile"].includes(p.get("net")) ? p.get("net") : "";
   state.region = /^[A-Z0-9]{1,3}$/.test(p.get("region") ?? "") ? p.get("region") : null;
+  state.layer = ["blocks", "outages"].includes(p.get("layer")) ? p.get("layer") : "auto";
 }
 
 function writeUrl() {
@@ -50,6 +58,7 @@ function writeUrl() {
   if (state.days !== "1") p.set("days", state.days);
   if (state.net) p.set("net", state.net);
   if (state.region) p.set("region", state.region);
+  if (state.layer !== "auto") p.set("layer", state.layer);
   history.replaceState(null, "", `?${p}`);
 }
 
@@ -117,7 +126,9 @@ function initControls() {
 function syncControls() {
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.querySelectorAll("button")) {
-      b.setAttribute("aria-checked", String(b.dataset.value === state[seg.dataset.name]));
+      // The layer switch shows what the map shows (in "auto" that may be outages), not the stored choice.
+      const current = seg.dataset.name === "layer" ? mapMode : state[seg.dataset.name];
+      b.setAttribute("aria-checked", String(b.dataset.value === current));
     }
   }
 }
@@ -212,21 +223,71 @@ async function initMap() {
     const code = e.target.dataset?.code;
     if (!code) return hideTip();
     const shape = regionShapes.get(code);
+    if (mapMode === "outages") {
+      const o = external?.ioda?.regions?.[code];
+      const rows = o
+        ? `<div class="row"><span>Сбои связи</span><span>${hours(o.hours)}</span></div>
+           <div class="row"><span>События</span><span>${o.events}</span></div>
+           <div class="row"><span>Заметили</span><span>${esc(o.sources.map((s) => SOURCE_NAMES[s] ?? s).join(", "))}</span></div>`
+        : '<div class="row"><span>Сбоев не замечено</span><span></span></div>';
+      return showTip(`<b>${esc(shape.name)}</b>${rows}`, e);
+    }
     const s = regionData.get(code);
     showTip(`<b>${esc(shape.name)}</b>${s ? statRows(s) : '<div class="row"><span>Мало данных</span><span></span></div>'}`, e);
   });
   svg.addEventListener("pointerleave", hideTip);
   svg.addEventListener("click", (e) => {
     const code = e.target.dataset?.code;
-    if (code && regionData.has(code)) selectRegion(state.region === code ? null : code);
+    if (mapMode === "blocks" && code && regionData.has(code)) selectRegion(state.region === code ? null : code);
   });
+}
 
+const hours = (h) => (h < 1 ? `${Math.max(1, Math.round(h * 60))} мин` : `${h.toLocaleString("ru-RU")} ч`) + " за 7 дней";
+
+function renderLegend(mode) {
+  const labels = mode === "outages" ? HOUR_LABELS : BIN_LABELS;
   const legend = $("legend");
   legend.innerHTML =
-    BIN_LABELS.map((l, i) => `<span class="sw${i === 4 ? " last" : ""}"><i class="lg c${i}"></i>${l}</span>`).join("") +
-    `<span class="sw nd"><i></i>нет данных</span>`;
+    labels.map((l, i) => `<span class="sw${i === 4 ? " last" : ""}"><i class="lg c${i}"></i>${l}</span>`).join("") +
+    (mode === "outages" ? `<span class="sw nd zero"><i></i>нет сбоев</span>` : `<span class="sw nd"><i></i>нет данных</span>`);
   // Legend swatches take the map's class colours.
   legend.querySelectorAll("i.lg").forEach((i, n) => (i.style.background = `var(--c${n})`));
+}
+
+function hourBin(h) {
+  const i = HOUR_BINS.findIndex((b) => h < b);
+  return i === -1 ? 4 : i;
+}
+
+/** The IODA layer: every region has a value (no outage is a value too). */
+function renderOutages(auto) {
+  const regions = external.ioda.regions;
+  regionData = new Map();
+  for (const [code, shape] of regionShapes) {
+    const o = regions[code];
+    shape.el.setAttribute("class", o ? `c${hourBin(o.hours)}` : "zero");
+  }
+  $("map").classList.remove("dim");
+  $("map-empty").hidden = true;
+  renderLegend("outages");
+  const name = targetName(state.target);
+  const why = auto
+    ? `Наших замеров по ${esc(name)} пока мало, поэтому карта показывает сбои связи по регионам. `
+    : "";
+  $("map-note").innerHTML =
+    `${why}Сбои связи — когда регион заметно пропадает из интернета (BGP, активный пинг, телескоп) по данным ` +
+    `<a href="${esc(external.ioda.url)}" rel="noopener" target="_blank">IODA</a>, ${esc(fmtDate(external.ioda.since))} — ${esc(fmtDate(external.ioda.until))}. ` +
+    `Отключения мобильного интернета с «белыми списками» видны не всегда.`;
+  $("map-note").hidden = false;
+  $("map-sub").textContent = "сбои связи по регионам за 7 дней · IODA";
+
+  $("region-head").innerHTML = `<tr><th>Регион</th><th class="num">События</th><th class="num">Сбои</th><th>Кто заметил</th></tr>`;
+  const rows = Object.entries(regions).sort((a, b) => b[1].hours - a[1].hours);
+  $("region-rows").innerHTML = rows.length
+    ? rows
+        .map(([code, o]) => `<tr><td>${esc(regionName(code))}</td><td class="num">${o.events}</td><td class="num">${esc(hours(o.hours))}</td><td class="method">${esc(o.sources.map((s) => SOURCE_NAMES[s] ?? s).join(", "))}</td></tr>`)
+        .join("")
+    : `<tr class="empty"><td colspan="4">За неделю сбоев не замечено</td></tr>`;
 }
 
 function regionName(code) {
@@ -242,7 +303,19 @@ function renderMap(map) {
   }
   $("map").classList.toggle("dim", Boolean(state.region));
   $("map-empty").hidden = map.regions.length > 0;
+  $("map-note").hidden = true;
+  renderLegend("blocks");
+  if (map.regions.length === 0) {
+    // Say what other sources know instead of just "no data".
+    const o = ooniOf(state.target);
+    $("map-empty").innerHTML =
+      "Пока данных мало: регион появляется на карте, когда его подтвердили минимум три разных человека." +
+      (o
+        ? `<br><br>По данным OONI за неделю у ${esc(targetName(state.target))} аномалии в <b>${pct(o.share)}</b> из ${num(o.measurements)} замеров — по провайдерам ниже. Регионы OONI не различает.`
+        : "");
+  }
 
+  $("region-head").innerHTML = `<tr><th>Регион</th><th class="num">Участники</th><th class="num">Блокировка</th><th>Основной способ</th></tr>`;
   const rows = [...map.regions].sort((a, b) => b.blocked - a.blocked || b.reporters - a.reporters);
   $("region-rows").innerHTML = rows.length
     ? rows
@@ -504,7 +577,16 @@ async function refreshTarget() {
   const net = { "": "", home: ", домашний интернет", mobile: ", мобильный интернет" }[state.net];
   $("map-sub").textContent = `доля замеров с блокировкой ${period}${net}`;
   const map = await api("map", { target: state.target, ...common() });
-  renderMap(map);
+  const haveOutages = Boolean(external?.ioda?.regions);
+  const auto = state.layer === "auto" && map.regions.length === 0 && haveOutages;
+  mapMode = (state.layer === "outages" && haveOutages) || auto ? "outages" : "blocks";
+  if (mapMode === "outages") {
+    state.region = null;
+    renderOutages(auto);
+  } else {
+    renderMap(map);
+  }
+  syncControls();
   if (state.region && !regionData.has(state.region)) state.region = null;
   $("region-bar").hidden = !state.region;
   if (state.region) $("region-name").textContent = regionName(state.region);

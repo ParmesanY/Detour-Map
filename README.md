@@ -121,6 +121,7 @@ would, so reports made with one are refused.
 | Code | [MIT](LICENSE) |
 | The map's aggregated data (`/v1/*`) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | OONI layer on the site ([OONI](https://ooni.org/) Web Connectivity, last 7 days) | [CC BY-NC-SA 4.0](https://github.com/ooni/license), shown separately and attributed |
+| Connectivity outages by region ([IODA](https://ioda.inetintel.cc.gatech.edu/), Georgia Tech), the map's fallback layer | attributed; IODA publishes no data license, we show derived hours and link back |
 | RKN register status ([antifilter.download](https://antifilter.download/) export) | facts from a public register |
 | Event timeline ([spec/events.json](spec/events.json)) | each event links its source |
 | Region borders ([Natural Earth](https://www.naturalearthdata.com/)) | public domain |

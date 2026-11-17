@@ -128,6 +128,60 @@ async function ooni() {
   return result;
 }
 
+// ---- IODA: connectivity outages by region ----
+
+const IODA = "https://api.ioda.inetintel.cc.gatech.edu/v2";
+
+/**
+ * Hours with an outage per region over the last 7 days. IODA (Georgia Tech) watches BGP, active probing and
+ * a network telescope per region; overlapping events of different sources are merged before summing.
+ * Its regions carry Natural Earth's id, which ne-region-codes.json turns into our region codes.
+ */
+async function ioda() {
+  const { codes } = JSON.parse(await readFile(join(root, "site", "tools", "ne-region-codes.json"), "utf8"));
+  const to = Math.floor(until.getTime() / 1000);
+  const from = to - OONI_DAYS * 86400;
+  const entities = (await (await get(`${IODA}/entities/query?entityType=region&relatedTo=country/RU&limit=500`)).json()).data ?? [];
+  const regionOf = new Map(entities.filter((e) => codes[e.attrs?.ne_region_id]).map((e) => [`region/${e.code}`, codes[e.attrs.ne_region_id]]));
+  const events = (await (await get(`${IODA}/outages/events?from=${from}&until=${to}&entityType=region&relatedTo=country/RU&limit=5000&format=codf`)).json()).data ?? [];
+
+  const spans = new Map();
+  for (const e of events) {
+    const region = regionOf.get(e.location);
+    if (!region) continue;
+    const start = Math.max(from, e.start);
+    const end = Math.min(to, e.start + (e.duration ?? 0));
+    if (end <= start) continue;
+    const list = spans.get(region) ?? { intervals: [], sources: new Set(), events: 0 };
+    list.intervals.push([start, end]);
+    list.sources.add(e.datasource);
+    list.events++;
+    spans.set(region, list);
+  }
+  const regions = {};
+  for (const [region, { intervals, sources, events: n }] of spans) {
+    intervals.sort((a, b) => a[0] - b[0]);
+    let total = 0;
+    let [cs, ce] = intervals[0];
+    for (const [s, e] of intervals.slice(1)) {
+      if (s <= ce) ce = Math.max(ce, e);
+      else {
+        total += ce - cs;
+        [cs, ce] = [s, e];
+      }
+    }
+    total += ce - cs;
+    regions[region] = { hours: Math.round((total / 3600) * 10) / 10, events: n, sources: [...sources].sort() };
+  }
+  return {
+    source: "IODA, Georgia Tech Internet Intelligence Lab",
+    url: "https://ioda.inetintel.cc.gatech.edu/country/RU",
+    since: day(new Date(from * 1000)),
+    until: day(until),
+    regions,
+  };
+}
+
 // ---- RKN register (antifilter) ----
 
 async function lines(url) {
@@ -180,8 +234,8 @@ const settle = async (fn) => {
   }
 };
 
-const data = { generated: new Date().toISOString(), ooni: await settle(ooni), rkn: await settle(rkn), events };
+const data = { generated: new Date().toISOString(), ooni: await settle(ooni), rkn: await settle(rkn), ioda: await settle(ioda), events };
 await mkdir(dirname(out), { recursive: true });
 await writeFile(out, JSON.stringify(data));
 const ok = (x) => (x.error ? `error: ${x.error}` : "ok");
-console.log(`external.json: ooni ${ok(data.ooni)}, rkn ${ok(data.rkn)}, ${events.length} events`);
+console.log(`external.json: ooni ${ok(data.ooni)}, rkn ${ok(data.rkn)}, ioda ${ok(data.ioda)}, ${events.length} events`);

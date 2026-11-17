@@ -28,7 +28,9 @@ const FIX_NAME = {
   CHU: "Чукотский АО",
   YEV: "Еврейская АО",
 };
-const FIX_CODE = { "X01~": "YAN" };
+// The Moscow city and Moscow oblast shapes carry each other's ISO code (RU-MOW is the oblast's ring): swap them,
+// so Cloudflare's regionCode MOW (the city) lands on the city.
+const FIX_CODE = { "X01~": "YAN", MOW: "MOS", MOS: "MOW" };
 
 const world = JSON.parse(readFileSync(source, "utf8"));
 const features = world.features

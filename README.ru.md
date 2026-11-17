@@ -122,6 +122,7 @@ trace: DPI by site name (SNI)
 | Код | [MIT](LICENSE) |
 | Агрегаты карты (`/v1/*`) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Слой OONI на сайте ([OONI](https://ooni.org/) Web Connectivity, 7 дней) | [CC BY-NC-SA 4.0](https://github.com/ooni/license), отдельно и с указанием источника |
+| Сбои связи по регионам ([IODA](https://ioda.inetintel.cc.gatech.edu/), Georgia Tech) — запасной слой карты | с указанием источника; лицензию на данные IODA не публикует, показываем посчитанные часы и ссылку |
 | Есть ли в реестре РКН (выгрузка [antifilter.download](https://antifilter.download/)) | факты из публичного реестра |
 | Лента событий ([spec/events.json](spec/events.json)) | у каждого события ссылка на источник |
 | Границы регионов ([Natural Earth](https://www.naturalearthdata.com/)) | public domain |

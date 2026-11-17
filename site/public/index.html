@@ -53,8 +53,15 @@
       <section class="panel map-panel" aria-labelledby="map-title">
         <div class="panel-head">
           <h1 id="map-title" class="panel-title"><span id="target-name">…</span> <span class="hint" id="map-sub"></span></h1>
-          <div class="legend" id="legend" aria-label="Шкала"></div>
+          <div class="map-tools">
+            <div class="seg" role="radiogroup" aria-label="Слой карты" data-name="layer">
+              <button role="radio" data-value="blocks">блокировки</button>
+              <button role="radio" data-value="outages">сбои связи</button>
+            </div>
+            <div class="legend" id="legend" aria-label="Шкала"></div>
+          </div>
         </div>
+        <p id="map-note" class="map-note" hidden></p>
         <div class="map-wrap">
           <svg id="map" role="img" aria-labelledby="map-title"></svg>
           <div id="map-empty" class="map-empty" hidden>
@@ -69,7 +76,7 @@
         <details class="table-view">
           <summary>Таблица по регионам</summary>
           <table class="data">
-            <thead><tr><th>Регион</th><th class="num">Участники</th><th class="num">Блокировка</th><th>Основной способ</th></tr></thead>
+            <thead id="region-head"><tr><th>Регион</th><th class="num">Участники</th><th class="num">Блокировка</th><th>Основной способ</th></tr></thead>
             <tbody id="region-rows"></tbody>
           </table>
         </details>
@@ -118,6 +125,7 @@
           Границы регионов: Natural Earth (public domain). Наши данные — доли замеров, а не официальные реестры; они открыты
           по CC BY 4.0. Другие источники: <a href="https://explorer.ooni.org/" rel="noopener">OONI</a> (CC BY-NC-SA 4.0),
           выгрузка реестра Роскомнадзора <a href="https://antifilter.download/" rel="noopener">antifilter.download</a>,
+          сбои связи по регионам <a href="https://ioda.inetintel.cc.gatech.edu/" rel="noopener">IODA</a> (Georgia Tech),
           события со ссылками на СМИ. Код: <a href="https://github.com/ParmesanY/Detour-Map" rel="noopener">GitHub</a>.
         </p>
       </footer>
