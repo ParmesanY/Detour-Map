@@ -54,7 +54,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.rid }}
-          path: pkg/detour-probe-*.*
+          # Only the archives: the unpacked folder's name has dots too and would match a looser pattern.
+          path: |
+            pkg/*.zip
+            pkg/*.tar.gz
 
   release:
     needs: build
@@ -69,7 +72,7 @@ jobs:
           merge-multiple: true
       - name: Checksums
         working-directory: dist
-        run: sha256sum detour-probe-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+        run: sha256sum *.zip *.tar.gz > SHA256SUMS.txt && cat SHA256SUMS.txt
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}

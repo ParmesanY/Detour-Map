@@ -9,6 +9,13 @@
       "source": "https://respawn.media/gaming/rszdq-servisy-i-platformy-kotorye-zablokiroval-roskomnadzor-v-rossii-s-2022-goda"
     },
     {
+      "date": "2022-03-04",
+      "targets": ["x"],
+      "ru": "Роскомнадзор ограничил доступ к Twitter по требованию Генпрокуратуры",
+      "en": "Roskomnadzor restricts access to Twitter at the Prosecutor General's request",
+      "source": "https://rozetked.me/news/22294-roskomnadzor-ogranichil-dostup-k-twitter"
+    },
+    {
       "date": "2022-03-14",
       "targets": ["instagram"],
       "ru": "Роскомнадзор начал блокировать Instagram",
@@ -21,6 +28,13 @@
       "ru": "Массовое замедление YouTube: видео почти не грузится без обхода",
       "en": "YouTube slowed down nationwide: video barely loads without a bypass",
       "source": "https://habr.com/ru/articles/833284"
+    },
+    {
+      "date": "2024-08-09",
+      "targets": ["signal"],
+      "ru": "Роскомнадзор заблокировал Signal",
+      "en": "Roskomnadzor blocks Signal",
+      "source": "https://zona.media/news/2024/08/09/signal-rkn"
     },
     {
       "date": "2024-10-08",
