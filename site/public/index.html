@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The GitHub Pages mirror has no _headers: the policy comes from here (the main site also sends a stricter header). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self' https://detour-map-collector.detour-map-collector.workers.dev https://parmesany.github.io; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
   <title>Detour Map — карта блокировок</title>
   <meta name="description" content="Что блокируют в России, у какого провайдера, в каком регионе и каким способом. Замеры присылают сами пользователи.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -87,6 +90,11 @@
         </section>
       </div>
 
+      <section class="panel" aria-labelledby="ext-title">
+        <h2 id="ext-title" class="panel-title">Другие источники <span class="hint">отдельно от наших замеров, у каждого своя методика</span></h2>
+        <div id="ext" class="ext"><p class="muted">Загрузка…</p></div>
+      </section>
+
       <section class="panel methods" aria-labelledby="methods-title">
         <h2 id="methods-title" class="panel-title">Как блокируют</h2>
         <dl class="method-list">
@@ -105,7 +113,12 @@
           или консольным зондом <span class="mono">detour-probe</span>. Сервер не хранит IP-адреса: по адресу определяются только
           провайдер и регион, а для защиты от спама — суточный псевдоним, ключ которого удаляется в конце дня.
         </p>
-        <p class="muted">Границы регионов: Natural Earth (public domain). Данные — доли замеров, а не официальные реестры.</p>
+        <p class="muted">
+          Границы регионов: Natural Earth (public domain). Наши данные — доли замеров, а не официальные реестры; они открыты
+          по CC BY 4.0. Другие источники: <a href="https://explorer.ooni.org/" rel="noopener">OONI</a> (CC BY-NC-SA 4.0),
+          выгрузка реестра Роскомнадзора <a href="https://antifilter.download/" rel="noopener">antifilter.download</a>,
+          события со ссылками на СМИ. Код: <a href="https://github.com/ParmesanY/detour-map" rel="noopener">GitHub</a>.
+        </p>
       </footer>
     </section>
   </main>

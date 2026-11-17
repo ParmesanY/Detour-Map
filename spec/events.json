@@ -1,0 +1,54 @@
+{
+  "note": "Hand-curated timeline. Each event links its source; targets are IDs from targets.json, [] means it concerns many services.",
+  "events": [
+    {
+      "date": "2022-03-04",
+      "targets": ["facebook"],
+      "ru": "Роскомнадзор начал блокировать Facebook",
+      "en": "Roskomnadzor starts blocking Facebook",
+      "source": "https://respawn.media/gaming/rszdq-servisy-i-platformy-kotorye-zablokiroval-roskomnadzor-v-rossii-s-2022-goda"
+    },
+    {
+      "date": "2022-03-14",
+      "targets": ["instagram"],
+      "ru": "Роскомнадзор начал блокировать Instagram",
+      "en": "Roskomnadzor starts blocking Instagram",
+      "source": "https://respawn.media/gaming/rszdq-servisy-i-platformy-kotorye-zablokiroval-roskomnadzor-v-rossii-s-2022-goda"
+    },
+    {
+      "date": "2024-08-01",
+      "targets": ["youtube", "googlevideo"],
+      "ru": "Массовое замедление YouTube: видео почти не грузится без обхода",
+      "en": "YouTube slowed down nationwide: video barely loads without a bypass",
+      "source": "https://habr.com/ru/articles/833284"
+    },
+    {
+      "date": "2024-10-08",
+      "targets": ["discord", "discord-gateway", "discord-media"],
+      "ru": "Роскомнадзор заблокировал Discord",
+      "en": "Roskomnadzor blocks Discord",
+      "source": "https://zona.media/news/2024/10/08/discord"
+    },
+    {
+      "date": "2025-06-09",
+      "targets": ["cloudflare", "hetzner", "ovh", "vultr", "linode"],
+      "ru": "Начало «заморозки 16 КБ»: соединения с Cloudflare и зарубежными хостингами обрываются после первых 16 КБ (Cloudflare подтвердила 26 июня)",
+      "en": "The \"16 KB freeze\" begins: connections to Cloudflare and foreign hosting stop after the first 16 KB (Cloudflare confirmed on 26 June)",
+      "source": "https://zona.media/news/2025/06/27/cf-confirmed"
+    },
+    {
+      "date": "2025-07-07",
+      "targets": [],
+      "ru": "Отключения мобильного интернета затрагивают больше половины регионов (карта шатдаунов «Медузы» и проекта «На связи»)",
+      "en": "Mobile internet shutdowns hit more than half of the regions (shutdown map by Meduza and the Na Svyazi project)",
+      "source": "https://meduza.io/feature/2025/07/07/karta-shatdaunov-v-kakih-rossiyskih-regionah-mobilnyy-internet-otklyuchayut-chasche-vsego"
+    },
+    {
+      "date": "2025-08-13",
+      "targets": ["telegram", "whatsapp"],
+      "ru": "Роскомнадзор объявил о частичном ограничении звонков в Telegram и WhatsApp",
+      "en": "Roskomnadzor announces partial restriction of Telegram and WhatsApp calls",
+      "source": "https://novayagazeta.eu/articles/2025/08/13/v-rossii-blokiruiut-zvonki-v-whatsapp-i-telegram"
+    }
+  ]
+}

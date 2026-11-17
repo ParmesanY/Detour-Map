@@ -1,4 +1,10 @@
-// Detour Map front end: no dependencies, everything from the same origin (/v1 API, regions.json).
+// Detour Map front end: no dependencies. On the main site everything comes from the same origin (/v1 API,
+// regions.json); the GitHub Pages mirror asks the collector for /v1 and carries the rest itself.
+
+const COLLECTOR = "https://detour-map-collector.detour-map-collector.workers.dev";
+const PAGES = "https://parmesany.github.io/detour-map/";
+const ON_PAGES = location.hostname.endsWith("github.io");
+const API_BASE = ON_PAGES ? COLLECTOR : "";
 
 const METHODS = {
   dns: "DNS-подмена",
@@ -51,7 +57,7 @@ function writeUrl() {
 
 async function api(path, params = {}) {
   const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== null && v !== ""));
-  const res = await fetch(`/v1/${path}?${q}`);
+  const res = await fetch(`${API_BASE}/v1/${path}?${q}`);
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.json();
 }
@@ -317,6 +323,85 @@ function renderHistory(data) {
   }
 }
 
+// ---- Other sources --------------------------------------------------------------------------------
+
+let external = null;
+
+/** data/external.json: rebuilt daily on the Pages mirror; the main site takes that fresh copy and falls back to its own. */
+async function loadExternal() {
+  const local = ON_PAGES || ["localhost", "127.0.0.1"].includes(location.hostname);
+  const urls = local ? ["data/external.json"] : [`${PAGES}data/external.json`, "data/external.json"];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: "no-cache" });
+      if (res.ok) return await res.json();
+    } catch {
+      // next one
+    }
+  }
+  return null;
+}
+
+const num = (n) => n.toLocaleString("ru-RU");
+const share = (part, all) => (all > 0 ? pct(part / all) : "—");
+const fmtDate = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
+const link = (url, text) => `<a href="${esc(url)}" rel="noopener" target="_blank">${esc(text)}</a>`;
+
+function renderExternal() {
+  const box = $("ext");
+  if (!external) {
+    box.innerHTML = `<p class="muted">Не удалось загрузить данные других источников.</p>`;
+    return;
+  }
+  const id = state.target;
+  const blocks = [];
+
+  const rkn = external.rkn?.targets?.[id];
+  if (rkn) {
+    const reg = rkn.register
+      ? `<b class="flag on">в реестре</b> ${rkn.register !== hostOf(id) ? `<span class="muted">(домен ${esc(rkn.register)})</span>` : ""}`
+      : `<b class="flag">нет в реестре</b>`;
+    const comm = rkn.community
+      ? `<div class="ext-line muted">Есть в списке сообщества «нужен обход»: блокируется без записи в реестре или закрыт самим сервисом для России.</div>`
+      : "";
+    blocks.push(`<div class="ext-block"><div class="ext-head"><span class="label">Реестр Роскомнадзора</span>${link(external.rkn.url, "antifilter.download")}</div>
+      <div class="ext-line">${reg}</div>${comm}</div>`);
+  }
+
+  const o = external.ooni?.targets?.[id];
+  if (o && !o.error) {
+    const head = `<div class="ext-head"><span class="label">OONI, ${esc(fmtDate(external.ooni.since))} — ${esc(fmtDate(external.ooni.until))}</span>${link(`https://explorer.ooni.org/chart/mat?probe_cc=RU&test_name=web_connectivity&domain=${encodeURIComponent(o.domain)}&axis_x=measurement_start_day`, "OONI Explorer")}</div>`;
+    if (o.measurements === 0) {
+      blocks.push(`<div class="ext-block">${head}<div class="ext-line muted">Нет замеров ${esc(o.domain)} из России за неделю.</div></div>`);
+    } else {
+      const rows = o.asns
+        .map((a) => `<tr><td class="mono">AS${a.asn}</td><td class="num">${num(a.measurements)}</td><td class="num">${share(a.anomaly + a.confirmed, a.measurements)}</td></tr>`)
+        .join("");
+      blocks.push(`<div class="ext-block">${head}
+        <div class="ext-line"><b>${num(o.measurements)}</b> замеров ${esc(o.domain)}: аномалия в <b>${share(o.anomaly, o.measurements)}</b>,
+          подтверждённая блокировка в <b>${share(o.confirmed, o.measurements)}</b>, без проблем — ${share(o.ok, o.measurements)}</div>
+        <table class="data compact"><thead><tr><th>Сеть</th><th class="num">Замеры</th><th class="num">Аномалии</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="ext-line muted">«Аномалия» у OONI — признак вмешательства, но не доказательство; «подтверждённая» — найдена известная заглушка. Данные OONI: CC BY-NC-SA 4.0.</div>
+      </div>`);
+    }
+  }
+
+  const evs = (external.events ?? [])
+    .filter((e) => e.targets.includes(id) || e.targets.length === 0)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  if (evs.length) {
+    blocks.push(`<div class="ext-block"><div class="ext-head"><span class="label">События</span></div><ul class="events">${evs
+      .map((e) => `<li><span class="mono muted">${esc(fmtDate(e.date))}</span> ${esc(e.ru)} ${link(e.source, "источник")}</li>`)
+      .join("")}</ul></div>`);
+  }
+
+  box.innerHTML = blocks.length ? blocks.join("") : `<p class="muted">Для этой цели других источников нет.</p>`;
+}
+
+function hostOf(id) {
+  return (targets.find((t) => t.id === id)?.host ?? "").replace(/^www\./, "");
+}
+
 // ---- Refresh --------------------------------------------------------------------------------------
 
 function targetName(id) {
@@ -343,6 +428,7 @@ async function refreshTarget() {
   if (state.region && !regionData.has(state.region)) state.region = null;
   $("region-bar").hidden = !state.region;
   if (state.region) $("region-name").textContent = regionName(state.region);
+  renderExternal();
   await refreshDetails();
 }
 
@@ -357,8 +443,9 @@ async function main() {
   readUrl();
   initControls();
   syncControls();
-  const [list] = await Promise.all([api("targets"), initMap()]);
+  const [list, , ext] = await Promise.all([api("targets"), initMap(), loadExternal()]);
   targets = list.targets;
+  external = ext;
   if (state.target !== WHITELIST && !targets.some((t) => t.id === state.target)) state.target = "youtube";
   writeUrl();
   await refresh();
