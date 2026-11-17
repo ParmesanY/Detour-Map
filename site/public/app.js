@@ -272,7 +272,8 @@ function renderOutages(auto) {
   renderLegend("outages");
   const name = targetName(state.target);
   const why = auto
-    ? `Наших замеров по ${esc(name)} пока мало, поэтому карта показывает сбои связи по регионам. `
+    ? `Наших замеров по ${esc(name)} пока мало, поэтому карта показывает сбои связи по регионам ` +
+      `(<a href="https://github.com/ParmesanY/Detour-Map/releases/latest" rel="noopener" target="_blank">помочь карте замером</a>). `
     : "";
   $("map-note").innerHTML =
     `${why}Сбои связи — когда регион заметно пропадает из интернета (BGP, активный пинг, телескоп) по данным ` +
@@ -313,7 +314,8 @@ function renderMap(map) {
       "Пока данных мало: регион появляется на карте, когда его подтвердили минимум три разных человека." +
       (o
         ? `<br><br>По данным OONI за неделю у ${esc(targetName(state.target))} аномалии в <b>${pct(o.share)}</b> из ${num(o.measurements)} замеров — по провайдерам ниже. Регионы OONI не различает.`
-        : "");
+        : "") +
+      `<br><br><a href="https://github.com/ParmesanY/Detour-Map/releases/latest" rel="noopener" target="_blank">Помочь карте: скачать detour-probe</a> — замер своего провайдера за минуту.`;
   }
 
   $("region-head").innerHTML = `<tr><th>Регион</th><th class="num">Участники</th><th class="num">Блокировка</th><th>Основной способ</th></tr>`;

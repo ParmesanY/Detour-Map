@@ -46,7 +46,11 @@ flowchart LR
 
 ## Быстрый старт
 
-Нужен [.NET 10 SDK](https://dotnet.microsoft.com/download). Ничего никуда не отправляется, пока вы не попросите.
+**Скачайте** [detour-probe](https://github.com/ParmesanY/Detour-Map/releases/latest) для Windows или Linux: без установки, .NET не
+нужен, контрольные суммы в `SHA256SUMS.txt`. Запуск из терминала: `detour-probe trace x.com`. Ничего никуда не
+отправляется, пока вы не попросите.
+
+Или из исходников, нужен [.NET 10 SDK](https://dotnet.microsoft.com/download):
 
 ```sh
 # Как именно заблокирован сайт и что поможет?

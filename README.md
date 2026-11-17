@@ -46,7 +46,11 @@ flowchart LR
 
 ## Quick start
 
-You need the [.NET 10 SDK](https://dotnet.microsoft.com/download). Nothing is sent anywhere unless you ask for it.
+**Download** [detour-probe](https://github.com/ParmesanY/Detour-Map/releases/latest) for Windows or Linux: no install, no .NET
+needed, checksums in `SHA256SUMS.txt`. Run it from a terminal: `detour-probe trace x.com`. Nothing is sent anywhere unless
+you ask for it.
+
+Or run from source with the [.NET 10 SDK](https://dotnet.microsoft.com/download):
 
 ```sh
 # How exactly is a site blocked, and what helps?
