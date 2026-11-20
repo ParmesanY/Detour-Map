@@ -3,6 +3,7 @@
 import { addDays, utcDay } from "./privacy";
 import { TARGETS, TARGET_BY_ID, TARGETS_VERSION, WHITELIST_TARGET } from "./targets";
 import { strategiesApi } from "./strategies";
+import { transportIspsApi, transportsApi } from "./transports";
 
 export class QueryError extends Error {}
 
@@ -173,6 +174,12 @@ export async function handleApi(url: URL, env: Env, now = new Date()): Promise<u
 
     case "/v1/strategies":
       return strategiesApi(url, env, now);
+
+    case "/v1/transports":
+      return transportsApi(url, env, now);
+
+    case "/v1/transport-isps":
+      return transportIspsApi(url, env, now);
 
     default:
       return undefined;

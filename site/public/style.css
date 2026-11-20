@@ -285,6 +285,7 @@ table.data .empty td { color: var(--muted); text-align: center; padding: 18px 8p
 
 /* OONI layer: its own colour, an "≈" in values and a legend, never mixed into our bars */
 .meter.ooni > i { background: var(--ooni); }
+.meter.frozen > i { background: var(--ooni); } /* VPN transports: share of frozen checks */
 .target-list .val.ooni { color: var(--muted); }
 table.data tr.src-head td { color: var(--muted); font: 11px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding-top: 12px; }
 .history .ooni-line { fill: none; stroke: var(--ooni); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }

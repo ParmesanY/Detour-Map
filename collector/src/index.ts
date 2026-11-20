@@ -2,6 +2,7 @@
 // Never logs requests: they carry client IPs.
 import { ingest, originOf, type Origin } from "./ingest";
 import { ingestStrategies } from "./strategies";
+import { ingestTransports } from "./transports";
 import { handleApi, QueryError } from "./api";
 import { runMaintenance } from "./aggregate";
 import { MAX_BODY_BYTES } from "./report";
@@ -89,7 +90,10 @@ export default {
     if (request.method === "POST" && url.pathname === "/v1/strategies") {
       return post(request, env, ingestStrategies);
     }
-    if (request.method === "GET" && url.pathname === "/v1/strategies" && !url.searchParams.get("asn")) {
+    if (request.method === "POST" && url.pathname === "/v1/transports") {
+      return post(request, env, ingestTransports);
+    }
+    if (request.method === "GET" && (url.pathname === "/v1/strategies" || url.pathname === "/v1/transports") && !url.searchParams.get("asn")) {
       // "For my ISP": the asking connection's ASN goes into the URL, so the cache keys on it too.
       const asn = (request.cf as IncomingRequestCfProperties | undefined)?.asn;
       if (!asn) {

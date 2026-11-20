@@ -642,11 +642,47 @@ async function refreshTarget() {
   await refreshDetails();
 }
 
+// ---- VPN transports by ISP -----------------------------------------------------------------------
+
+const TRANSPORT_NAMES = {
+  "vless-reality": "VLESS REALITY", "vless-reality-xhttp": "VLESS REALITY XHTTP", "vless-tls": "VLESS TLS",
+  "vless-xhttp": "VLESS XHTTP", "vless-ws": "VLESS WebSocket", "vless-grpc": "VLESS gRPC", vmess: "VMess", trojan: "Trojan",
+  shadowsocks: "Shadowsocks", hysteria2: "Hysteria2", tuic: "TUIC", wireguard: "WireGuard", amneziawg: "AmneziaWG",
+  warp: "WARP", other: "другие",
+};
+
+function renderTransports(data) {
+  const rows = [];
+  for (const isp of data?.isps ?? []) {
+    isp.transports.forEach((t, i) => {
+      rows.push(`<tr>
+        <td>${i === 0 ? `${esc(isp.as_org || "—")}<span class="asn">AS${isp.asn}</span>` : ""}</td>
+        <td>${esc(TRANSPORT_NAMES[t.transport] || t.transport)}</td>
+        <td class="num">${t.reporters}</td>
+        <td><span class="bar"><span class="meter"><i data-w="${Math.round(t.ok * 100)}"></i></span>${pct(t.ok)}</span></td>
+        <td><span class="bar"><span class="meter frozen"><i data-w="${Math.round(t.frozen * 100)}"></i></span>${pct(t.frozen)}</span></td>
+      </tr>`);
+    });
+  }
+  $("vpn-rows").innerHTML = rows.length
+    ? rows.join("")
+    : `<tr class="empty"><td colspan="5">Пока мало данных: провайдер появляется, когда о протоколе сообщили трое и больше</td></tr>`;
+  applyMeters();
+}
+
+async function refreshTransports() {
+  try {
+    renderTransports(await api("transport-isps", common()));
+  } catch {
+    renderTransports(null);
+  }
+}
+
 async function refresh() {
   const summary = await api("summary", common());
   renderTargets(summary);
   applyMeters();
-  await refreshTarget();
+  await Promise.all([refreshTarget(), refreshTransports()]);
 }
 
 async function main() {

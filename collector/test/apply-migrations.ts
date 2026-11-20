@@ -11,5 +11,7 @@ beforeEach(async () => {
     env.DB.prepare("DELETE FROM agg_daily"),
     env.DB.prepare("DELETE FROM strategy_reports"),
     env.DB.prepare("DELETE FROM strategy_daily"),
+    env.DB.prepare("DELETE FROM transport_reports"),
+    env.DB.prepare("DELETE FROM transport_daily"),
   ]);
 });

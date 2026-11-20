@@ -2,6 +2,7 @@ import { addDays, utcDay } from "./privacy";
 import { WHITELIST_TARGET } from "./targets";
 import { BLOCKING } from "./verdicts";
 import { strategyMaintenance } from "./strategies";
+import { transportMaintenance } from "./transports";
 
 /** Raw reports are kept this long (to recompute verdicts when rules change); aggregates forever. */
 export const RAW_RETENTION_DAYS = 30;
@@ -44,5 +45,6 @@ export async function runMaintenance(db: D1Database, now = new Date()): Promise<
     db.prepare("DELETE FROM salts WHERE day < ?1").bind(today),
     db.prepare("DELETE FROM reports WHERE day < ?1").bind(addDays(today, -RAW_RETENTION_DAYS)),
     ...strategyMaintenance(db, today, yesterday, RAW_RETENTION_DAYS),
+    ...transportMaintenance(db, today, yesterday, RAW_RETENTION_DAYS),
   ]);
 }

@@ -16,6 +16,7 @@
   <ItemGroup>
     <None Include="..\..\spec\verdict-cases.json" Link="verdict-cases.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\spec\strategy-cases.json" Link="strategy-cases.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\spec\transports.json" Link="transports.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

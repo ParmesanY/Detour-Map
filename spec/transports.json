@@ -1,0 +1,20 @@
+{
+  "comment": "VPN transport kinds for /v1/transports, shared by collector/src/transports.ts and probe/Detour.NetProbe/Tune/TransportReport.cs. A report names only one of these, never a server.",
+  "transports": [
+    "vless-reality",
+    "vless-reality-xhttp",
+    "vless-tls",
+    "vless-xhttp",
+    "vless-ws",
+    "vless-grpc",
+    "vmess",
+    "trojan",
+    "shadowsocks",
+    "hysteria2",
+    "tuic",
+    "wireguard",
+    "amneziawg",
+    "warp",
+    "other"
+  ]
+}

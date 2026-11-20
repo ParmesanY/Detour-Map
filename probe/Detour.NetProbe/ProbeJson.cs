@@ -16,4 +16,6 @@ namespace Detour.NetProbe;
 [JsonSerializable(typeof(TuneReport))]
 [JsonSerializable(typeof(StrategyHints))]
 [JsonSerializable(typeof(StrategyReport))]
+[JsonSerializable(typeof(TransportReport))]
+[JsonSerializable(typeof(TransportHints))]
 public sealed partial class ProbeJson : JsonSerializerContext;
